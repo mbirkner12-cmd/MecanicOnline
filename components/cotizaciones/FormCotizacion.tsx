@@ -881,13 +881,23 @@ export function FormCotizacion({
         </div>
       </div>
 
-      {/* ── Total reparación ── */}
-      <div className="flex items-center justify-between rounded-xl bg-zinc-900 px-5 py-4">
-        <div>
-          <span className="font-semibold text-white block">Total reparación</span>
-          <span className="text-xs text-zinc-400">Mano de obra + repuestos + retiro/entrega</span>
+      {/* ── Totales ── */}
+      <div className="rounded-xl border border-zinc-200 overflow-hidden">
+        <div className="flex justify-between items-center px-5 py-3 bg-zinc-50">
+          <span className="text-sm font-medium text-zinc-700">Total Neto</span>
+          <span className="text-sm font-semibold text-zinc-900">{formatPesos(totalReparacion)}</span>
         </div>
-        <span className="text-xl font-bold text-white">{formatPesos(totalReparacion)}</span>
+        <div className="flex justify-between items-center px-5 py-3 border-t border-zinc-100">
+          <span className="text-sm text-zinc-500">IVA (19%)</span>
+          <span className="text-sm text-zinc-700">{formatPesos(Math.round(totalReparacion * 0.19))}</span>
+        </div>
+        <div className="flex items-center justify-between bg-zinc-900 px-5 py-4">
+          <div>
+            <span className="font-semibold text-white block">Total</span>
+            <span className="text-xs text-zinc-400">Neto + IVA 19%</span>
+          </div>
+          <span className="text-xl font-bold text-white">{formatPesos(Math.round(totalReparacion * 1.19))}</span>
+        </div>
       </div>
 
       {/* ── Sección 4: Recomendaciones ── */}
@@ -914,11 +924,11 @@ export function FormCotizacion({
             <div>
               <span className="font-semibold text-amber-900 block text-sm">Si incluye recomendaciones</span>
               <span className="text-xs text-amber-700">
-                Total reparación {formatPesos(totalReparacion)} + recomendaciones {formatPesos(totalRecomendaciones)}
+                {formatPesos(totalReparacion)} neto + {formatPesos(totalRecomendaciones)} recomendaciones + IVA 19%
               </span>
             </div>
             <span className="text-xl font-bold text-amber-900">
-              {formatPesos(totalReparacion + totalRecomendaciones)}
+              {formatPesos(Math.round((totalReparacion + totalRecomendaciones) * 1.19))}
             </span>
           </div>
         )}

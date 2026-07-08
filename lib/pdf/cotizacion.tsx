@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
 });
 
 // ── Shared table renderer ─────────────────────────────────────────────────────
-function RepuestosTable({ items }: { items: RepuestoItem[] }) {
+function RepuestosTable({ items, subtotalLabel }: { items: RepuestoItem[]; subtotalLabel: string }) {
   const subtotal = items.reduce((acc, r) => acc + (r.monto_total ?? 0), 0);
   return (
     // @ts-ignore
@@ -225,7 +225,7 @@ function RepuestosTable({ items }: { items: RepuestoItem[] }) {
       {/* @ts-ignore */}
       <View style={[styles.montoRow, { marginTop: 4, justifyContent: 'flex-end', gap: 16 }]}>
         {/* @ts-ignore */}
-        <Text style={[styles.montoLabel, { fontFamily: 'Helvetica-Bold' }]}>Subtotal</Text>
+        <Text style={[styles.montoLabel, { fontFamily: 'Helvetica-Bold' }]}>{subtotalLabel}</Text>
         {/* @ts-ignore */}
         <Text style={styles.montoValue}>{formatPesos(subtotal)}</Text>
       </View>
@@ -382,7 +382,7 @@ export function CotizacionDocument({ data }: CotizacionDocumentProps) {
             // @ts-ignore
             <Text style={styles.noData}>Sin repuestos</Text>
           ) : (
-            <RepuestosTable items={repuestos} />
+            <RepuestosTable items={repuestos} subtotalLabel="Subtotal repuestos" />
           )}
         </View>
 
@@ -400,13 +400,30 @@ export function CotizacionDocument({ data }: CotizacionDocumentProps) {
           </View>
         </View>
 
-        {/* ── Total reparación ── */}
+        {/* ── Totales ── */}
         {/* @ts-ignore */}
-        <View style={styles.totalContainer}>
+        <View style={{ marginTop: 4 }}>
           {/* @ts-ignore */}
-          <Text style={styles.totalLabel}>TOTAL REPARACIÓN</Text>
+          <View style={[styles.montoRow, { borderTopWidth: 1, borderTopColor: '#e5e5e5', paddingTop: 6 }]}>
+            {/* @ts-ignore */}
+            <Text style={[styles.montoLabel, { fontFamily: 'Helvetica-Bold' }]}>Total Neto</Text>
+            {/* @ts-ignore */}
+            <Text style={[styles.montoValue, { fontFamily: 'Helvetica-Bold' }]}>{formatPesos(data.total)}</Text>
+          </View>
           {/* @ts-ignore */}
-          <Text style={styles.totalValue}>{formatPesos(data.total)}</Text>
+          <View style={styles.montoRow}>
+            {/* @ts-ignore */}
+            <Text style={styles.montoLabel}>IVA (19%)</Text>
+            {/* @ts-ignore */}
+            <Text style={styles.montoValue}>{formatPesos(Math.round(data.total * 0.19))}</Text>
+          </View>
+          {/* @ts-ignore */}
+          <View style={styles.totalContainer}>
+            {/* @ts-ignore */}
+            <Text style={styles.totalLabel}>TOTAL</Text>
+            {/* @ts-ignore */}
+            <Text style={styles.totalValue}>{formatPesos(Math.round(data.total * 1.19))}</Text>
+          </View>
         </View>
 
         {/* ── Recomendaciones ── */}
@@ -415,7 +432,7 @@ export function CotizacionDocument({ data }: CotizacionDocumentProps) {
           <View style={[styles.section, { marginTop: 16 }]}>
             {/* @ts-ignore */}
             <Text style={styles.sectionTitleAlt}>RECOMENDACIONES ADICIONALES (OPCIONAL)</Text>
-            <RepuestosTable items={recomendaciones} />
+            <RepuestosTable items={recomendaciones} subtotalLabel="Subtotal recomendaciones" />
             {/* @ts-ignore */}
             <View style={styles.totalAltContainer}>
               {/* @ts-ignore */}
@@ -424,11 +441,11 @@ export function CotizacionDocument({ data }: CotizacionDocumentProps) {
                 <Text style={styles.totalAltLabel}>SI INCLUYE RECOMENDACIONES</Text>
                 {/* @ts-ignore */}
                 <Text style={[styles.totalAltLabel, { fontSize: 8, fontFamily: 'Helvetica', marginTop: 2 }]}>
-                  {formatPesos(data.total)} reparación + {formatPesos(totalRecomendaciones)} recomendaciones
+                  {formatPesos(data.total)} neto + {formatPesos(totalRecomendaciones)} recomendaciones + IVA 19%
                 </Text>
               </View>
               {/* @ts-ignore */}
-              <Text style={styles.totalAltValue}>{formatPesos(data.total + totalRecomendaciones)}</Text>
+              <Text style={styles.totalAltValue}>{formatPesos(Math.round((data.total + totalRecomendaciones) * 1.19))}</Text>
             </View>
           </View>
         )}

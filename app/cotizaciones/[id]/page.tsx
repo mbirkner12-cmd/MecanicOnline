@@ -509,7 +509,7 @@ export default function CotizacionDetallePage() {
         {/* Repuestos */}
         <RepuestosCard title="Repuestos" items={repuestos} subtotalLabel="Subtotal repuestos" />
 
-        {/* Retiro y entrega + Total reparación */}
+        {/* Retiro y entrega + Totales */}
         <Card>
           <CardContent className="pt-4 space-y-3">
             <div className="flex justify-between items-center">
@@ -517,11 +517,19 @@ export default function CotizacionDetallePage() {
               <span className="text-sm text-zinc-700">{formatPesos(cotizacion.retiro_entrega_monto)}</span>
             </div>
             <div className="flex justify-between items-center pt-3 border-t border-zinc-200">
+              <span className="text-sm font-medium text-zinc-700">Total Neto</span>
+              <span className="text-sm font-semibold text-zinc-900">{formatPesos(cotizacion.total)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-zinc-500">IVA (19%)</span>
+              <span className="text-sm text-zinc-700">{formatPesos(Math.round(cotizacion.total * 0.19))}</span>
+            </div>
+            <div className="flex justify-between items-center pt-3 border-t border-zinc-200">
               <div>
-                <span className="font-semibold text-zinc-900 block">Total reparación</span>
-                <span className="text-xs text-zinc-400">Mano de obra + repuestos + retiro/entrega</span>
+                <span className="font-semibold text-zinc-900 block">Total</span>
+                <span className="text-xs text-zinc-400">Neto + IVA 19%</span>
               </div>
-              <span className="text-xl font-bold text-zinc-900">{formatPesos(cotizacion.total)}</span>
+              <span className="text-xl font-bold text-zinc-900">{formatPesos(Math.round(cotizacion.total * 1.19))}</span>
             </div>
           </CardContent>
         </Card>
@@ -540,11 +548,11 @@ export default function CotizacionDetallePage() {
                   <div>
                     <span className="font-semibold text-amber-900 block text-sm">Si incluye recomendaciones</span>
                     <span className="text-xs text-amber-700">
-                      {formatPesos(cotizacion.total)} reparación + {formatPesos(totalRecomendaciones)} recomendaciones
+                      {formatPesos(cotizacion.total)} neto + {formatPesos(totalRecomendaciones)} recomendaciones + IVA 19%
                     </span>
                   </div>
                   <span className="text-xl font-bold text-amber-900">
-                    {formatPesos(cotizacion.total + totalRecomendaciones)}
+                    {formatPesos(Math.round((cotizacion.total + totalRecomendaciones) * 1.19))}
                   </span>
                 </div>
               </CardContent>

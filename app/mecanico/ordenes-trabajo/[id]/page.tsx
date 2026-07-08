@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { EstadoBadgeOT, type EstadoOT } from '@/components/ordenes-trabajo/EstadoBadgeOT';
 import { ArrowLeft, Car, User, Wrench, Calendar, FileText, Package, ClipboardList, CheckCircle2, Circle } from 'lucide-react';
+import { DiagnosticoDisplay } from '@/components/diagnostico/DiagnosticoDisplay';
 
 interface InsumoItem {
   detalle: string;
@@ -291,9 +292,7 @@ export default function MecanicoOTDetallePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">
-              {ot.recepcion.diagnostico_mecanico}
-            </p>
+            <DiagnosticoDisplay value={ot.recepcion.diagnostico_mecanico} />
           </CardContent>
         </Card>
       )}

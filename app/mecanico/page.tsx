@@ -19,6 +19,8 @@ import {
 import { Car, Stethoscope, AlertTriangle } from 'lucide-react';
 import { getAlertaDocumentos } from '@/lib/utils/documentos';
 import { useSession } from '@/lib/hooks/useSession';
+import { DiagnosticoForm, type DiagnosticoItem } from '@/components/diagnostico/DiagnosticoForm';
+import { parseDiagnostico } from '@/components/diagnostico/DiagnosticoDisplay';
 
 interface RecepcionMecanico {
   id: number;
@@ -60,7 +62,7 @@ export default function MecanicoPage() {
   // Diagnosticar dialog
   const [diagOpen, setDiagOpen] = useState(false);
   const [diagTarget, setDiagTarget] = useState<RecepcionMecanico | null>(null);
-  const [diagText, setDiagText] = useState('');
+  const [diagItems, setDiagItems] = useState<DiagnosticoItem[]>([]);
   const [diagLoading, setDiagLoading] = useState(false);
 
   const fetchRecepciones = async () => {
@@ -89,7 +91,7 @@ export default function MecanicoPage() {
 
   const openDiag = (r: RecepcionMecanico) => {
     setDiagTarget(r);
-    setDiagText(r.diagnostico_mecanico ?? '');
+    setDiagItems(parseDiagnostico(r.diagnostico_mecanico) ?? []);
     setDiagOpen(true);
   };
 
@@ -97,10 +99,11 @@ export default function MecanicoPage() {
     if (!diagTarget) return;
     setDiagLoading(true);
     try {
+      const value = diagItems.length > 0 ? JSON.stringify(diagItems) : null;
       const res = await fetch(`/api/recepciones/${diagTarget.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ diagnostico_mecanico: diagText || null }),
+        body: JSON.stringify({ diagnostico_mecanico: value }),
       });
       if (!res.ok) return;
       setDiagOpen(false);
@@ -218,7 +221,7 @@ export default function MecanicoPage() {
 
       {/* Dialog Diagnóstico */}
       <Dialog open={diagOpen} onOpenChange={(o) => { if (!diagLoading) setDiagOpen(o); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Diagnóstico — {diagTarget?.vehiculo?.patente ?? ''}
@@ -230,15 +233,9 @@ export default function MecanicoPage() {
                 ? `${diagTarget.vehiculo.marca} ${diagTarget.vehiculo.modelo} ${diagTarget.vehiculo.anio}`
                 : ''}
             </p>
-            <textarea
-              className="flex min-h-[120px] w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none"
-              value={diagText}
-              onChange={(e) => setDiagText(e.target.value)}
-              placeholder="Describe el diagnóstico del vehículo..."
-              rows={5}
-              spellCheck
-              autoCapitalize="sentences"
-              lang="es"
+            <DiagnosticoForm
+              value={diagItems}
+              onChange={setDiagItems}
               disabled={diagLoading}
             />
           </div>

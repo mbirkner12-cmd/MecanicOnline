@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, ClipboardList } from "lucide-react";
 import { formatRut, normalizeRut, formatPhone } from "@/lib/format";
+import { DiagnosticoDisplay } from "@/components/diagnostico/DiagnosticoDisplay";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface RepuestoItem {
@@ -762,9 +763,7 @@ export function FormCotizacion({
             <ClipboardList className="size-4 text-zinc-400" />
             Diagnóstico del mecánico
           </h3>
-          <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900 leading-relaxed whitespace-pre-wrap">
-            {v.diagnostico_mecanico}
-          </div>
+          <DiagnosticoDisplay value={v.diagnostico_mecanico} />
         </div>
       )}
 

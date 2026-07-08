@@ -27,6 +27,7 @@ import {
 import { EstadoBadgeCot, type EstadoCotizacion } from "@/components/cotizaciones/EstadoBadgeCot";
 import { FormCotizacion, type FormCotizacionValues, type RepuestoItem, type ManoDeObraItem } from "@/components/cotizaciones/FormCotizacion";
 import { ArrowLeft, Pencil, FileText, Car, User, ClipboardList, Truck } from "lucide-react";
+import { DiagnosticoDisplay } from "@/components/diagnostico/DiagnosticoDisplay";
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -462,9 +463,7 @@ export default function CotizacionDetallePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">
-                {cotizacion.recepcion.diagnostico_mecanico}
-              </p>
+              <DiagnosticoDisplay value={cotizacion.recepcion.diagnostico_mecanico} />
             </CardContent>
           </Card>
         )}

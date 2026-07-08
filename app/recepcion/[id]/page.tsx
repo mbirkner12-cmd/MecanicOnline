@@ -20,6 +20,7 @@ import { EstadoBadge, type EstadoRecepcion } from "@/components/recepcion/Estado
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
 import { ArrowLeft, Pencil, Car, User, Wrench, X, Stethoscope, FileText, Phone } from "lucide-react";
 import { getEstadoDocumento, getAlertaDocumentos, formatFechaVencimiento, type EstadoDocumento } from "@/lib/utils/documentos";
+import { DiagnosticoDisplay } from "@/components/diagnostico/DiagnosticoDisplay";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface RecepcionDetalle {
@@ -545,15 +546,8 @@ export default function RecepcionDetallePage() {
             <div className="flex items-center gap-2">
               <Stethoscope className="size-4 text-zinc-500" />
               <span className="text-sm font-semibold text-zinc-700">Diagnóstico del mecánico</span>
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                Diagnóstico del mecánico
-              </span>
             </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm text-zinc-800 whitespace-pre-wrap leading-relaxed">
-                {recepcion.diagnostico_mecanico}
-              </p>
-            </div>
+            <DiagnosticoDisplay value={recepcion.diagnostico_mecanico} />
           </div>
         )}
 

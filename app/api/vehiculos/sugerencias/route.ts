@@ -7,33 +7,31 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const marca = searchParams.get("marca");
 
-  const marcas = db
-    .select({ value: sql<string>`DISTINCT ${vehiculos.marca}` })
-    .from(vehiculos)
-    .all()
+  const marcasRows = await db
+    .selectDistinct({ value: vehiculos.marca })
+    .from(vehiculos);
+
+  const marcas = marcasRows
     .map((r) => r.value)
     .filter(Boolean)
     .sort();
 
-  let modelos: string[];
+  let modelosRows;
   if (marca) {
-    modelos = db
-      .select({ value: sql<string>`DISTINCT ${vehiculos.modelo}` })
+    modelosRows = await db
+      .selectDistinct({ value: vehiculos.modelo })
       .from(vehiculos)
-      .where(sql`lower(${vehiculos.marca}) = lower(${marca})`)
-      .all()
-      .map((r) => r.value)
-      .filter(Boolean)
-      .sort();
+      .where(sql`lower(${vehiculos.marca}) = lower(${marca})`);
   } else {
-    modelos = db
-      .select({ value: sql<string>`DISTINCT ${vehiculos.modelo}` })
-      .from(vehiculos)
-      .all()
-      .map((r) => r.value)
-      .filter(Boolean)
-      .sort();
+    modelosRows = await db
+      .selectDistinct({ value: vehiculos.modelo })
+      .from(vehiculos);
   }
+
+  const modelos = modelosRows
+    .map((r) => r.value)
+    .filter(Boolean)
+    .sort();
 
   return NextResponse.json({ marcas, modelos });
 }

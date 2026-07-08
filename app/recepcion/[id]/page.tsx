@@ -298,10 +298,20 @@ export default function RecepcionDetallePage() {
               </p>
             </div>
           </div>
-          <Button onClick={() => setEditOpen(true)} className="flex items-center gap-2">
-            <Pencil className="size-4" />
-            Editar
-          </Button>
+          <div className="flex items-center gap-2">
+            {recepcion.diagnostico_mecanico && (
+              <a href={`/api/recepciones/${recepcion.id}/pdf`} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+                  <FileText className="size-4" />
+                  PDF Diagnóstico
+                </Button>
+              </a>
+            )}
+            <Button onClick={() => setEditOpen(true)} className="flex items-center gap-2">
+              <Pencil className="size-4" />
+              Editar
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

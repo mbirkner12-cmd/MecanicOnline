@@ -104,8 +104,12 @@ function formatPesos(amount: number): string {
   }).format(amount);
 }
 
-// El jefe solo puede marcar como entregado (el mecánico maneja los estados anteriores)
-const SIGUIENTE_ESTADO: Record<string, EstadoOT> = {
+const SIGUIENTE_ESTADO_JEFE_SOLO: Record<string, EstadoOT> = {
+  listo_para_entregar: "entregado",
+};
+const SIGUIENTE_ESTADO_COMPLETO: Record<string, EstadoOT> = {
+  creada: "en_reparacion",
+  en_reparacion: "listo_para_entregar",
   listo_para_entregar: "entregado",
 };
 
@@ -274,7 +278,7 @@ export default function OTDetallePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {SIGUIENTE_ESTADO[ot.estado] && (
+            {(ot.mecanico_id === null ? SIGUIENTE_ESTADO_COMPLETO : SIGUIENTE_ESTADO_JEFE_SOLO)[ot.estado] && (
               <Button
                 variant="outline"
                 onClick={() => setCambiarEstadoOpen(true)}
@@ -576,13 +580,14 @@ export default function OTDetallePage() {
       </div>
 
       {/* Dialog Cambiar Estado */}
-      {ot && SIGUIENTE_ESTADO[ot.estado] && (
+      {ot && (ot.mecanico_id === null ? SIGUIENTE_ESTADO_COMPLETO : SIGUIENTE_ESTADO_JEFE_SOLO)[ot.estado] && (
         <CambiarEstadoDialog
           ot={ot}
           open={cambiarEstadoOpen}
           onOpenChange={(o) => { if (!o) setCambiarEstadoOpen(false); }}
           onConfirm={handleCambiarEstado}
           loading={cambiarEstadoLoading}
+          jefeOnly={ot.mecanico_id !== null}
         />
       )}
 

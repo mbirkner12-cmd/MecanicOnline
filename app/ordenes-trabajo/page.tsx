@@ -233,11 +233,11 @@ export default function OrdenesTrabajoPAge() {
     };
   };
 
-  const SIGUIENTE_ESTADO: Record<string, EstadoOT> = {
-    creada: "en_reparacion",
-    en_reparacion: "listo_para_entregar",
-    listo_para_entregar: "entregado",
-  };
+  // Jefe puede avanzar todos los estados si no hay mecánico; si hay mecánico, solo puede entregar
+  const puedeAvanzarJefe = (ot: OTRow) =>
+    ot.mecanico_id === null
+      ? ot.estado !== "entregado"
+      : ot.estado === "listo_para_entregar";
 
   return (
     <div className="flex flex-col gap-6">
@@ -327,8 +327,8 @@ export default function OrdenesTrabajoPAge() {
                         <Pencil className="size-4" />
                       </Button>
 
-                      {/* Cambiar estado — solo si no está entregado */}
-                      {SIGUIENTE_ESTADO[ot.estado] && (
+                      {/* Cambiar estado — jefe puede avanzar si no hay mecánico o si está listo para entregar */}
+                      {puedeAvanzarJefe(ot) && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -393,6 +393,7 @@ export default function OrdenesTrabajoPAge() {
           onOpenChange={(o) => { if (!o) setCambiarEstadoOT(null); }}
           onConfirm={handleCambiarEstado}
           loading={cambiarEstadoLoading}
+          jefeOnly={cambiarEstadoOT.mecanico_id !== null}
         />
       )}
     </div>

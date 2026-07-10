@@ -146,7 +146,7 @@ export async function POST(request: Request) {
           );
         }
         const existingVehiculo = await db
-          .select()
+          .select({ id: vehiculos.id })
           .from(vehiculos)
           .where(eq(vehiculos.patente, patente.toUpperCase()))
           .limit(1);

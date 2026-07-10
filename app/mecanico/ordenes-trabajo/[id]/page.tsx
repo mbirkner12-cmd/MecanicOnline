@@ -11,8 +11,10 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { EstadoBadgeOT, type EstadoOT } from '@/components/ordenes-trabajo/EstadoBadgeOT';
-import { ArrowLeft, Car, User, Wrench, Calendar, FileText, Package, ClipboardList, CheckCircle2, Circle } from 'lucide-react';
+import { ArrowLeft, Car, User, Wrench, Calendar, FileText, Package, ClipboardList, CheckCircle2, Circle, ClipboardCheck } from 'lucide-react';
 import { DiagnosticoDisplay } from '@/components/diagnostico/DiagnosticoDisplay';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FormRecepcion, type FormRecepcionValues } from '@/components/recepcion/FormRecepcion';
 
 interface InsumoItem {
   detalle: string;
@@ -24,7 +26,7 @@ interface OTDetalleMecanico {
   id: number;
   numero: string;
   cotizacion_id: number;
-  recepcion_id: number;
+  recepcion_id: number | null;
   vehiculo_id: number;
   cliente_id: number;
   mecanico_id: number | null;
@@ -109,6 +111,8 @@ export default function MecanicoOTDetallePage() {
   const [accionLoading, setAccionLoading] = useState(false);
   const [tareasCompletadas, setTareasCompletadas] = useState<boolean[]>([]);
   const [tareaGuardando, setTareaGuardando] = useState<number | null>(null);
+  const [recepcionDialogOpen, setRecepcionDialogOpen] = useState(false);
+  const [recepcionLoading, setRecepcionLoading] = useState(false);
 
   const fetchOT = async () => {
     setLoading(true);
@@ -152,6 +156,23 @@ export default function MecanicoOTDetallePage() {
       await fetchOT();
     } finally {
       setAccionLoading(false);
+    }
+  };
+
+  const handleRegistrarRecepcion = async (values: FormRecepcionValues) => {
+    if (!ot) return;
+    setRecepcionLoading(true);
+    try {
+      const res = await fetch('/api/recepciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...values, ot_id: ot.id }),
+      });
+      if (!res.ok) throw new Error('Error al registrar recepción');
+      setRecepcionDialogOpen(false);
+      await fetchOT();
+    } finally {
+      setRecepcionLoading(false);
     }
   };
 
@@ -205,7 +226,7 @@ export default function MecanicoOTDetallePage() {
   let mdoItems: { detalle: string; monto: number }[] = [];
   try { mdoItems = JSON.parse(ot.cotizacion?.mano_de_obra_detalle ?? '[]') as typeof mdoItems; } catch { /* noop */ }
 
-  const canIniciar = ot.estado === 'creada';
+  const canIniciar = ot.estado === 'creada' && ot.recepcion_id !== null;
   const todasCompletadas = mdoItems.length === 0
     || mdoItems.every((_, i) => tareasCompletadas[i] === true);
   const canTerminar = ot.estado === 'en_reparacion' && todasCompletadas;
@@ -225,7 +246,7 @@ export default function MecanicoOTDetallePage() {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-zinc-900">{ot.numero}</h1>
-              <EstadoBadgeOT estado={ot.estado} />
+              <EstadoBadgeOT estado={ot.estado} sinRecepcion={ot.recepcion_id === null} />
             </div>
             <p className="text-zinc-500 text-sm mt-0.5">
               Creada: {formatFecha(ot.created_at)}
@@ -235,6 +256,18 @@ export default function MecanicoOTDetallePage() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
+          {ot.estado === 'creada' && ot.recepcion_id === null && (
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                onClick={() => setRecepcionDialogOpen(true)}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-2"
+              >
+                <ClipboardCheck className="size-4" />
+                Registrar ingreso
+              </Button>
+              <p className="text-xs text-zinc-400">Debes registrar el ingreso antes de iniciar</p>
+            </div>
+          )}
           {canIniciar && (
             <Button
               onClick={() => handleCambiarEstado('en_reparacion')}
@@ -537,6 +570,34 @@ export default function MecanicoOTDetallePage() {
           })()}
         </CardContent>
       </Card>
+
+      {/* Dialog Registrar Recepción */}
+      <Dialog open={recepcionDialogOpen} onOpenChange={(o) => { if (!o) setRecepcionDialogOpen(false); }}>
+        <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="size-4" />
+              Registrar ingreso — {ot.numero}
+            </DialogTitle>
+          </DialogHeader>
+          <FormRecepcion
+            loading={recepcionLoading}
+            onCancel={() => setRecepcionDialogOpen(false)}
+            onSubmit={handleRegistrarRecepcion}
+            initialValues={{
+              vehiculo_id: ot.vehiculo_id,
+              cliente_id: ot.cliente_id,
+              patente: ot.vehiculo?.patente ?? '',
+              marca: ot.vehiculo?.marca ?? '',
+              modelo: ot.vehiculo?.modelo ?? '',
+              anio: ot.vehiculo?.anio ? String(ot.vehiculo.anio) : '',
+              kilometraje: ot.vehiculo?.kilometraje_actual ? String(ot.vehiculo.kilometraje_actual) : '',
+              nombre_cliente: ot.cliente?.nombre ?? '',
+              telefono_cliente: ot.cliente?.telefono ?? '',
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

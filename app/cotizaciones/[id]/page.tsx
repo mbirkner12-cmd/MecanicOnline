@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/table";
 import { EstadoBadgeCot, type EstadoCotizacion } from "@/components/cotizaciones/EstadoBadgeCot";
 import { FormCotizacion, type FormCotizacionValues, type RepuestoItem, type ManoDeObraItem } from "@/components/cotizaciones/FormCotizacion";
-import { ArrowLeft, Pencil, FileText, Car, User, ClipboardList, Truck } from "lucide-react";
+import { ArrowLeft, Pencil, FileText, Car, User, ClipboardList, Truck, MessageCircle } from "lucide-react";
 import { DiagnosticoDisplay } from "@/components/diagnostico/DiagnosticoDisplay";
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
 
@@ -60,6 +60,7 @@ interface CotizacionDetalle {
     nombre: string;
     telefono: string | null;
     correo: string | null;
+    whatsapp: string | null;
   } | null;
   recepcion: {
     id: number;
@@ -74,6 +75,36 @@ function formatPesos(amount: number): string {
     currency: "CLP",
     minimumFractionDigits: 0,
   }).format(amount);
+}
+
+function buildWhatsAppUrl(cot: CotizacionDetalle): string | null {
+  const phone = cot.cliente?.telefono ?? cot.cliente?.whatsapp ?? null;
+  if (!phone) return null;
+  // Normalizar número: quitar espacios, guiones, paréntesis, +
+  const digits = phone.replace(/\D/g, "");
+  // Si empieza en 9 (Chile sin código país) → agregar 56
+  const normalized = digits.startsWith("56") ? digits : digits.startsWith("9") ? `56${digits}` : digits;
+
+  const neto = cot.total;
+  const iva = Math.round(neto * 0.19);
+  const total = Math.round(neto * 1.19);
+  const vehiculo = cot.vehiculo
+    ? `${cot.vehiculo.patente} — ${cot.vehiculo.marca} ${cot.vehiculo.modelo} ${cot.vehiculo.anio}`
+    : "";
+
+  const msg = [
+    `Hola ${cot.cliente?.nombre ?? ""},`,
+    ``,
+    `Le enviamos la cotización *${cot.numero}* para su vehículo ${vehiculo}:`,
+    ``,
+    `• Total Neto: ${formatPesos(neto)}`,
+    `• IVA (19%): ${formatPesos(iva)}`,
+    `• *Total: ${formatPesos(total)}*`,
+    ``,
+    `Quedamos atentos a su respuesta.`,
+  ].join("\n");
+
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`;
 }
 
 function formatFecha(iso: string): string {
@@ -350,6 +381,14 @@ export default function CotizacionDetallePage() {
                   Rechazar
                 </Button>
               </>
+            )}
+            {buildWhatsAppUrl(cotizacion) && (
+              <a href={buildWhatsAppUrl(cotizacion)!} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="flex items-center gap-1.5 text-green-700 border-green-200 hover:bg-green-50">
+                  <MessageCircle className="size-4" />
+                  WhatsApp
+                </Button>
+              </a>
             )}
             <a href={`/api/cotizaciones/${cotizacion.id}/pdf`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="flex items-center gap-1.5">

@@ -40,6 +40,7 @@ async function getCotizacionById(id: number) {
         nombre: clientes.nombre,
         telefono: clientes.telefono,
         correo: clientes.correo,
+        whatsapp: clientes.whatsapp,
       },
       recepcion: {
         id: recepciones.id,

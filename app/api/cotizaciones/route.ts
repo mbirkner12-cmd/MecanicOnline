@@ -112,17 +112,15 @@ export async function POST(request: Request) {
       const { patente, marca, modelo, anio, rut_cliente, nombre_cliente, telefono_cliente } = body;
 
       if (!cliente_id) {
-        if (!rut_cliente || !nombre_cliente) {
+        if (!nombre_cliente) {
           return NextResponse.json(
-            { error: 'rut_cliente y nombre_cliente son requeridos cuando no se provee cliente_id' },
+            { error: 'nombre_cliente es requerido cuando no se provee cliente_id' },
             { status: 400 }
           );
         }
-        const existingCliente = await db
-          .select()
-          .from(clientes)
-          .where(eq(clientes.rut, rut_cliente))
-          .limit(1);
+        const existingCliente = rut_cliente
+          ? await db.select().from(clientes).where(eq(clientes.rut, rut_cliente)).limit(1)
+          : [];
 
         if (existingCliente.length > 0) {
           const [updatedCliente] = await db
@@ -134,7 +132,7 @@ export async function POST(request: Request) {
         } else {
           const [newCliente] = await db
             .insert(clientes)
-            .values({ rut: rut_cliente, nombre: nombre_cliente, telefono: telefono_cliente || null })
+            .values({ rut: rut_cliente || null, nombre: nombre_cliente, telefono: telefono_cliente || null })
             .returning();
           cliente_id = newCliente.id;
         }

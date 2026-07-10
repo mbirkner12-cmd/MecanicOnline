@@ -449,8 +449,8 @@ export function FormCotizacion({
         setErrorMsg("Marca, modelo y año son requeridos.");
         return;
       }
-      if (!srRutCliente.trim() || !srNombreCliente.trim()) {
-        setErrorMsg("RUT y nombre del cliente son requeridos.");
+      if (!srNombreCliente.trim()) {
+        setErrorMsg("El nombre del cliente es requerido.");
         return;
       }
       try {
@@ -630,7 +630,7 @@ export function FormCotizacion({
 
             {/* RUT cliente */}
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-zinc-600">RUT cliente *</label>
+              <label className="text-xs font-medium text-zinc-600">RUT cliente</label>
               <div className="relative">
                 <input
                   type="text"

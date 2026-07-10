@@ -28,14 +28,14 @@ const ESTADO_CONFIG: Record<EstadoOT, { label: string; className: string }> = {
 
 interface EstadoBadgeOTProps {
   estado: EstadoOT;
+  sinRecepcion?: boolean;
   className?: string;
 }
 
-export function EstadoBadgeOT({ estado, className }: EstadoBadgeOTProps) {
-  const config = ESTADO_CONFIG[estado] ?? {
-    label: estado,
-    className: "bg-zinc-100 text-zinc-500 border-zinc-200",
-  };
+export function EstadoBadgeOT({ estado, sinRecepcion, className }: EstadoBadgeOTProps) {
+  const config = (sinRecepcion && estado === "creada")
+    ? { label: "Programada", className: "bg-cyan-50 text-cyan-700 border-cyan-200" }
+    : ESTADO_CONFIG[estado] ?? { label: estado, className: "bg-zinc-100 text-zinc-500 border-zinc-200" };
 
   return (
     <Badge

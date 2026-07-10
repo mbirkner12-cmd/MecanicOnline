@@ -18,6 +18,8 @@ interface OTMecanico {
   numero: string;
   estado: EstadoOT;
   mecanico_id: number | null;
+  recepcion_id: number | null;
+  fecha_estimada_inicio: string | null;
   fecha_estimada_fin: string | null;
   vehiculo: {
     patente: string;
@@ -97,7 +99,7 @@ export default function MecanicoOrdenesPage() {
                   <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">N° OT</th>
                   <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Patente</th>
                   <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Estado</th>
-                  <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Fecha estimada</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Fecha estimada inicio</th>
                   <th className="text-right py-2 px-3 text-xs font-semibold text-zinc-500">Acciones</th>
                 </tr>
               </thead>
@@ -109,10 +111,10 @@ export default function MecanicoOrdenesPage() {
                       {ot.vehiculo?.patente ?? '—'}
                     </td>
                     <td className="py-2.5 px-3">
-                      <EstadoBadgeOT estado={ot.estado} />
+                      <EstadoBadgeOT estado={ot.estado} sinRecepcion={ot.recepcion_id === null} />
                     </td>
                     <td className="py-2.5 px-3 text-zinc-600">
-                      {formatFecha(ot.fecha_estimada_fin)}
+                      {formatFecha(ot.fecha_estimada_inicio)}
                     </td>
                     <td className="py-2.5 px-3 text-right">
                       <Link

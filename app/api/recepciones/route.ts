@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { recepciones, vehiculos, clientes, mecanicos, puestos, cotizaciones } from '@/lib/db/schema';
+import { recepciones, vehiculos, clientes, mecanicos, puestos, cotizaciones, ordenes_trabajo } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET() {
@@ -93,6 +93,7 @@ export async function POST(request: Request) {
       permiso_circulacion_vencimiento,
       motivo_ingreso,
       cotizacion_id,
+      ot_id,
     } = body;
 
     if (!patente || !marca || !modelo || !anio || kilometraje === undefined) {
@@ -212,7 +213,7 @@ export async function POST(request: Request) {
 
     // 4. Crear recepción
     const fotosArray = Array.isArray(fotos_urls) ? fotos_urls : [];
-    const estadoInicial = cotizacion_id ? 'con_ot_activa' : 'en_diagnostico';
+    const estadoInicial = (cotizacion_id || ot_id) ? 'con_ot_activa' : 'en_diagnostico';
     const [recepcion] = await db
       .insert(recepciones)
       .values({
@@ -236,6 +237,26 @@ export async function POST(request: Request) {
         .update(cotizaciones)
         .set({ recepcion_id: recepcion.id })
         .where(eq(cotizaciones.id, Number(cotizacion_id)));
+    }
+
+    // 6. Si se vincula a una OT programada, actualizar la OT y su cotización
+    if (ot_id) {
+      await db
+        .update(ordenes_trabajo)
+        .set({ recepcion_id: recepcion.id })
+        .where(eq(ordenes_trabajo.id, Number(ot_id)));
+      // También actualizar la cotización asociada a la OT
+      const otData = await db
+        .select({ cotizacion_id: ordenes_trabajo.cotizacion_id })
+        .from(ordenes_trabajo)
+        .where(eq(ordenes_trabajo.id, Number(ot_id)))
+        .limit(1);
+      if (otData[0]) {
+        await db
+          .update(cotizaciones)
+          .set({ recepcion_id: recepcion.id })
+          .where(eq(cotizaciones.id, otData[0].cotizacion_id));
+      }
     }
 
     return NextResponse.json(recepcion, { status: 201 });

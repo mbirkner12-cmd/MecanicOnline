@@ -140,6 +140,7 @@ export async function PUT(
       diagnostico?: string | null;
       mecanico_id?: number | null;
       puesto_id?: number | null;
+      recepcion_id?: number | null;
       insumos?: InsumoItem[];
       tareas_completadas?: boolean[];
       fecha_estimada_inicio?: string | null;
@@ -148,6 +149,14 @@ export async function PUT(
       fecha_hora_fin?: string | null;
       estado?: 'creada' | 'en_reparacion' | 'listo_para_entregar' | 'entregado';
     };
+
+    // No se puede iniciar sin recepción
+    if (body.estado === 'en_reparacion' && !existing.recepcion_id && !body.recepcion_id) {
+      return NextResponse.json(
+        { error: 'Debe registrar la recepción del vehículo antes de iniciar la OT' },
+        { status: 400 }
+      );
+    }
 
     // Build update fields
     const updateFields: Record<string, unknown> = {
@@ -158,6 +167,9 @@ export async function PUT(
     }
     if (body.mecanico_id !== undefined) {
       updateFields.mecanico_id = body.mecanico_id;
+    }
+    if (body.recepcion_id !== undefined) {
+      updateFields.recepcion_id = body.recepcion_id;
     }
     if (body.puesto_id !== undefined) {
       updateFields.puesto_id = body.puesto_id;

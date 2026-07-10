@@ -27,7 +27,7 @@ interface OTRow {
   id: number;
   numero: string;
   cotizacion_id: number;
-  recepcion_id: number;
+  recepcion_id: number | null;
   vehiculo_id: number;
   cliente_id: number;
   mecanico_id: number | null;
@@ -304,7 +304,7 @@ export default function OrdenesTrabajoPAge() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <EstadoBadgeOT estado={ot.estado} />
+                    <EstadoBadgeOT estado={ot.estado} sinRecepcion={ot.recepcion_id === null} />
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -394,6 +394,7 @@ export default function OrdenesTrabajoPAge() {
           onConfirm={handleCambiarEstado}
           loading={cambiarEstadoLoading}
           jefeOnly={cambiarEstadoOT.mecanico_id !== null}
+          sinRecepcion={cambiarEstadoOT.recepcion_id === null}
         />
       )}
     </div>

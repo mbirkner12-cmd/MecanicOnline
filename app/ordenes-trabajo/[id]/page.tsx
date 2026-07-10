@@ -19,14 +19,15 @@ import {
 import { EstadoBadgeOT, type EstadoOT } from "@/components/ordenes-trabajo/EstadoBadgeOT";
 import { CambiarEstadoDialog } from "@/components/ordenes-trabajo/CambiarEstadoDialog";
 import { FormOT, type FormOTValues, type InsumoItem } from "@/components/ordenes-trabajo/FormOT";
-import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package } from "lucide-react";
+import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
+import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTDetalle {
   id: number;
   numero: string;
   cotizacion_id: number;
-  recepcion_id: number;
+  recepcion_id: number | null;
   vehiculo_id: number;
   cliente_id: number;
   mecanico_id: number | null;
@@ -135,6 +136,10 @@ export default function OTDetallePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
 
+  // Registrar recepción
+  const [recepcionDialogOpen, setRecepcionDialogOpen] = useState(false);
+  const [recepcionLoading, setRecepcionLoading] = useState(false);
+
   const fetchOT = async () => {
     setLoading(true);
     setError("");
@@ -226,6 +231,46 @@ export default function OTDetallePage() {
     }
   };
 
+  // ── Registrar recepción desde OT programada ───────────────────────────────
+  const handleRegistrarRecepcion = async (values: FormRecepcionValues) => {
+    if (!ot) return;
+    setRecepcionLoading(true);
+    try {
+      const res = await fetch("/api/recepciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patente: values.patente,
+          marca: values.marca,
+          modelo: values.modelo,
+          anio: values.anio,
+          kilometraje: values.kilometraje,
+          nivel_bencina: values.nivel_bencina || null,
+          foto_tablero_url: values.foto_tablero_url || null,
+          fotos_urls: values.fotos_urls,
+          rut_cliente: values.rut_cliente,
+          nombre_cliente: values.nombre_cliente,
+          telefono_cliente: values.telefono_cliente || null,
+          direccion_cliente: values.direccion_cliente || null,
+          vehiculo_id: values.vehiculo_id,
+          cliente_id: values.cliente_id,
+          mecanico_id: values.mecanico_id ? Number(values.mecanico_id) : null,
+          puesto_id: values.puesto_id ? Number(values.puesto_id) : null,
+          motivo_ingreso: values.motivo_ingreso || null,
+          ot_id: ot.id,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? "Error al registrar recepción");
+      }
+      setRecepcionDialogOpen(false);
+      await fetchOT();
+    } finally {
+      setRecepcionLoading(false);
+    }
+  };
+
   // ── Loading / Error states ────────────────────────────────────────────────
   if (loading) {
     return (
@@ -270,7 +315,7 @@ export default function OTDetallePage() {
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl font-bold text-zinc-900">{ot.numero}</h1>
-                <EstadoBadgeOT estado={ot.estado} />
+                <EstadoBadgeOT estado={ot.estado} sinRecepcion={ot.recepcion_id === null} />
               </div>
               <p className="text-zinc-500 text-sm mt-0.5">
                 Creada: {formatFecha(ot.created_at)}
@@ -278,6 +323,16 @@ export default function OTDetallePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {ot.recepcion_id === null && (
+              <Button
+                variant="outline"
+                onClick={() => setRecepcionDialogOpen(true)}
+                className="flex items-center gap-2 border-cyan-300 text-cyan-700 hover:bg-cyan-50"
+              >
+                <ClipboardCheck className="size-4" />
+                Registrar recepción
+              </Button>
+            )}
             {(ot.mecanico_id === null ? SIGUIENTE_ESTADO_COMPLETO : SIGUIENTE_ESTADO_JEFE_SOLO)[ot.estado] && (
               <Button
                 variant="outline"
@@ -588,8 +643,42 @@ export default function OTDetallePage() {
           onConfirm={handleCambiarEstado}
           loading={cambiarEstadoLoading}
           jefeOnly={ot.mecanico_id !== null}
+          sinRecepcion={ot.recepcion_id === null}
         />
       )}
+
+      {/* Dialog Registrar Recepción */}
+      <Dialog open={recepcionDialogOpen} onOpenChange={(o) => { if (!o) setRecepcionDialogOpen(false); }}>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registrar recepción — {ot?.numero}</DialogTitle>
+          </DialogHeader>
+          {ot && (
+            <FormRecepcion
+              mode="create"
+              loading={recepcionLoading}
+              onCancel={() => setRecepcionDialogOpen(false)}
+              onSubmit={handleRegistrarRecepcion}
+              initialValues={{
+                vehiculo_id: ot.vehiculo_id,
+                patente: ot.vehiculo?.patente ?? "",
+                marca: ot.vehiculo?.marca ?? "",
+                modelo: ot.vehiculo?.modelo ?? "",
+                anio: String(ot.vehiculo?.anio ?? ""),
+                cliente_id: ot.cliente_id,
+                nombre_cliente: ot.cliente?.nombre ?? "",
+                telefono_cliente: ot.cliente?.telefono ?? "",
+                rut_cliente: ot.cliente?.rut ?? "",
+                kilometraje: "",
+                nivel_bencina: "",
+                fotos_urls: [],
+                mecanico_id: "",
+                puesto_id: "",
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Editar OT */}
       <Dialog open={editOpen} onOpenChange={(o) => { if (!o) setEditOpen(false); }}>

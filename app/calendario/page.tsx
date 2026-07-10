@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Trash2, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, CalendarDays, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,22 @@ const TIPO_CONFIG: Record<
   },
 };
 
+interface OTCalendario {
+  id: number;
+  numero: string;
+  fecha: string; // fecha_estimada_inicio YYYY-MM-DD
+  patente: string;
+  recepcion_id: number | null;
+  estado: string;
+}
+
+const OT_CONFIG = {
+  bgCls: "bg-cyan-100",
+  textCls: "text-cyan-700",
+  dotCls: "bg-cyan-500",
+  label: "OT Programada",
+};
+
 const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 function toYMD(date: Date): string {
@@ -78,6 +95,7 @@ function formatDateLabel(dateStr: string): string {
 export default function CalendarioPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [otsCalendario, setOtsCalendario] = useState<OTCalendario[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -94,10 +112,34 @@ export default function CalendarioPage() {
     const m = String(currentDate.getMonth() + 1).padStart(2, "0");
     const mes = `${y}-${m}`;
     try {
-      const res = await fetch(`/api/calendario?mes=${mes}`);
-      if (res.ok) {
-        const data: Evento[] = await res.json();
+      const [calRes, otRes] = await Promise.all([
+        fetch(`/api/calendario?mes=${mes}`),
+        fetch(`/api/ordenes-trabajo`),
+      ]);
+      if (calRes.ok) {
+        const data: Evento[] = await calRes.json();
         setEventos(data);
+      }
+      if (otRes.ok) {
+        const otData = await otRes.json() as Array<{
+          id: number;
+          numero: string;
+          fecha_estimada_inicio: string | null;
+          recepcion_id: number | null;
+          estado: string;
+          vehiculo: { patente: string } | null;
+        }>;
+        const ots: OTCalendario[] = otData
+          .filter((ot) => ot.fecha_estimada_inicio && ot.estado !== "entregado")
+          .map((ot) => ({
+            id: ot.id,
+            numero: ot.numero,
+            fecha: ot.fecha_estimada_inicio!.slice(0, 10),
+            patente: ot.vehiculo?.patente ?? "—",
+            recepcion_id: ot.recepcion_id,
+            estado: ot.estado,
+          }));
+        setOtsCalendario(ots);
       }
     } finally {
       setLoading(false);
@@ -182,7 +224,11 @@ export default function CalendarioPage() {
   const dayEventos = (dateStr: string) =>
     eventos.filter((ev) => ev.fecha === dateStr);
 
+  const dayOTs = (dateStr: string) =>
+    otsCalendario.filter((ot) => ot.fecha === dateStr);
+
   const selectedEventos = selectedDate ? dayEventos(selectedDate) : [];
+  const selectedOTs = selectedDate ? dayOTs(selectedDate) : [];
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -207,6 +253,10 @@ export default function CalendarioPage() {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-2 mb-4">
+        <span className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full font-medium bg-cyan-100 text-cyan-700">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+          OT Programada
+        </span>
         {(Object.keys(TIPO_CONFIG) as TipoEvento[]).map((tipo) => {
           const cfg = TIPO_CONFIG[tipo];
           return (
@@ -254,6 +304,8 @@ export default function CalendarioPage() {
                 const dateStr = toYMD(cellDate);
                 const isToday = dateStr === todayStr;
                 const dayEvents = isCurrentMonth ? dayEventos(dateStr) : [];
+                const dayOTItems = isCurrentMonth ? dayOTs(dateStr) : [];
+                const totalItems = dayEvents.length + dayOTItems.length;
 
                 return (
                   <div
@@ -280,9 +332,9 @@ export default function CalendarioPage() {
                           {dayNumber}
                         </span>
                         <div className="space-y-0.5">
-                          {dayEvents.slice(0, 3).map((ev) => (
+                          {dayEvents.slice(0, 2).map((ev) => (
                             <div
-                              key={ev.id}
+                              key={`ev-${ev.id}`}
                               className={cn(
                                 "text-xs px-1.5 py-0.5 rounded truncate",
                                 TIPO_CONFIG[ev.tipo].bgCls,
@@ -292,9 +344,17 @@ export default function CalendarioPage() {
                               {ev.titulo}
                             </div>
                           ))}
-                          {dayEvents.length > 3 && (
+                          {dayOTItems.slice(0, Math.max(0, 3 - dayEvents.length)).map((ot) => (
+                            <div
+                              key={`ot-${ot.id}`}
+                              className="text-xs px-1.5 py-0.5 rounded truncate bg-cyan-100 text-cyan-700"
+                            >
+                              {ot.numero} · {ot.patente}
+                            </div>
+                          ))}
+                          {totalItems > 3 && (
                             <div className="text-xs text-zinc-400 px-1.5">
-                              +{dayEvents.length - 3} más
+                              +{totalItems - 3} más
                             </div>
                           )}
                         </div>
@@ -317,13 +377,40 @@ export default function CalendarioPage() {
             </DialogTitle>
           </DialogHeader>
 
+          {/* OT events */}
+          {selectedOTs.length > 0 && (
+            <div className="space-y-2 mb-3">
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Órdenes de trabajo</p>
+              {selectedOTs.map((ot) => (
+                <div key={`ot-${ot.id}`} className="flex items-center gap-2 p-2.5 rounded-lg border border-cyan-100 bg-cyan-50/60">
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium shrink-0 bg-cyan-100 text-cyan-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                    {ot.recepcion_id ? "OT activa" : "Programada"}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-zinc-800">{ot.numero}</p>
+                    <p className="text-xs text-zinc-500">{ot.patente}</p>
+                  </div>
+                  <Link
+                    href={`/ordenes-trabajo/${ot.id}`}
+                    className="shrink-0 p-1 rounded hover:bg-cyan-100 text-cyan-600 transition-colors"
+                    title="Ver OT"
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Existing events */}
           <div className="space-y-2">
-            {selectedEventos.length === 0 ? (
+            {selectedEventos.length === 0 && selectedOTs.length === 0 ? (
               <p className="text-sm text-zinc-400 py-2">
                 No hay eventos para este día.
               </p>
-            ) : (
+            ) : selectedEventos.length === 0 ? null : (
               selectedEventos.map((ev) => {
                 const cfg = TIPO_CONFIG[ev.tipo];
                 return (

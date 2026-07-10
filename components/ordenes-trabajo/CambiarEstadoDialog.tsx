@@ -45,9 +45,8 @@ interface CambiarEstadoDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: (nuevoEstado: EstadoOT) => void;
   loading: boolean;
-  /** If true, only allow the jefe transition (listo_para_entregar → entregado).
-   *  If false/undefined, allow full progression (backwards compat). */
   jefeOnly?: boolean;
+  sinRecepcion?: boolean;
 }
 
 export function CambiarEstadoDialog({
@@ -57,7 +56,27 @@ export function CambiarEstadoDialog({
   onConfirm,
   loading,
   jefeOnly = true,
+  sinRecepcion = false,
 }: CambiarEstadoDialogProps) {
+  // OT programada sin recepción: no se puede iniciar
+  if (sinRecepcion && ot.estado === "creada") {
+    return (
+      <Dialog open={open} onOpenChange={(o) => { if (!loading) onOpenChange(o); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>No se puede iniciar la OT</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-600 py-2">
+            Esta OT está programada pero aún no tiene recepción registrada. Debes registrar la recepción del vehículo antes de poder iniciarla.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   const map = jefeOnly ? SIGUIENTE_ESTADO_JEFE : SIGUIENTE_ESTADO_COMPLETO;
   const siguienteEstado = map[ot.estado];
 

@@ -99,6 +99,12 @@ async function main() {
   const hasCalendario = tables.rows.length > 0;
   console.log('¿Tiene eventos_calendario?', hasCalendario);
 
+  // Check if ordenes_trabajo.recepcion_id is nullable
+  const otInfo = await client.execute(`PRAGMA table_info(ordenes_trabajo)`);
+  const recepcionIdCol = otInfo.rows.find((r) => r[1] === 'recepcion_id');
+  const otRecepcionNotNull = recepcionIdCol ? (recepcionIdCol[3] as number) === 1 : false;
+  console.log('¿OT recepcion_id NOT NULL?', otRecepcionNotNull);
+
   // --- Migration 0010: make rut nullable ---
   if (rutIsNotNull) {
     console.log('\nAplicando 0010: rut nullable en clientes...');
@@ -151,6 +157,42 @@ async function main() {
     console.log('✓ 0012 aplicado');
   } else {
     console.log('✓ 0012 ya aplicado (eventos_calendario ya existe)');
+  }
+
+  // --- Migration 0013: make recepcion_id nullable in ordenes_trabajo ---
+  if (otRecepcionNotNull) {
+    console.log('\nAplicando 0013: recepcion_id nullable en ordenes_trabajo...');
+    await client.execute(`PRAGMA foreign_keys=OFF`);
+    await client.execute(`
+      CREATE TABLE \`ordenes_trabajo_new\` (
+        \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        \`numero\` text NOT NULL,
+        \`cotizacion_id\` integer NOT NULL REFERENCES \`cotizaciones\`(\`id\`),
+        \`recepcion_id\` integer REFERENCES \`recepciones\`(\`id\`),
+        \`vehiculo_id\` integer NOT NULL REFERENCES \`vehiculos\`(\`id\`),
+        \`cliente_id\` integer NOT NULL REFERENCES \`clientes\`(\`id\`),
+        \`mecanico_id\` integer REFERENCES \`mecanicos\`(\`id\`),
+        \`puesto_id\` integer REFERENCES \`puestos\`(\`id\`),
+        \`insumos\` text NOT NULL DEFAULT '[]',
+        \`diagnostico\` text,
+        \`fecha_estimada_inicio\` text,
+        \`fecha_estimada_fin\` text,
+        \`fecha_hora_inicio\` text,
+        \`fecha_hora_fin\` text,
+        \`tareas_completadas\` text NOT NULL DEFAULT '[]',
+        \`estado\` text NOT NULL DEFAULT 'creada',
+        \`created_at\` text NOT NULL DEFAULT (datetime('now')),
+        \`updated_at\` text NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    await client.execute(`INSERT INTO \`ordenes_trabajo_new\` SELECT * FROM \`ordenes_trabajo\``);
+    await client.execute(`DROP TABLE \`ordenes_trabajo\``);
+    await client.execute(`ALTER TABLE \`ordenes_trabajo_new\` RENAME TO \`ordenes_trabajo\``);
+    await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS \`ordenes_trabajo_numero_unique\` ON \`ordenes_trabajo\` (\`numero\`)`);
+    await client.execute(`PRAGMA foreign_keys=ON`);
+    console.log('✓ 0013 aplicado');
+  } else {
+    console.log('✓ 0013 ya aplicado (recepcion_id ya es nullable)');
   }
 
   console.log('\n¡Migraciones completadas!');

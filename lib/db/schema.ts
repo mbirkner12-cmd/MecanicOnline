@@ -130,7 +130,7 @@ export const ordenes_trabajo = sqliteTable('ordenes_trabajo', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   numero: text('numero').notNull().unique(),
   cotizacion_id: integer('cotizacion_id').notNull().references(() => cotizaciones.id),
-  recepcion_id: integer('recepcion_id').notNull().references(() => recepciones.id),
+  recepcion_id: integer('recepcion_id').references(() => recepciones.id),
   vehiculo_id: integer('vehiculo_id').notNull().references(() => vehiculos.id),
   cliente_id: integer('cliente_id').notNull().references(() => clientes.id),
   mecanico_id: integer('mecanico_id').references(() => mecanicos.id),

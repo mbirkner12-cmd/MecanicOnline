@@ -198,7 +198,7 @@ export async function PUT(
       .where(eq(ordenes_trabajo.id, numId));
 
     // Si estado cambia a 'entregado': actualizar recepcion.estado a 'entregado'
-    if (body.estado === 'entregado') {
+    if (body.estado === 'entregado' && existing.recepcion_id != null) {
       await db
         .update(recepciones)
         .set({ estado: 'entregado', updated_at: sql`(datetime('now'))` })
@@ -232,11 +232,13 @@ export async function DELETE(
 
     await db.delete(ordenes_trabajo).where(eq(ordenes_trabajo.id, numId));
 
-    // Revertir recepción a 'con_ot_activa' (cotización sigue aceptada)
-    await db
-      .update(recepciones)
-      .set({ estado: 'con_ot_activa', updated_at: sql`(datetime('now'))` })
-      .where(eq(recepciones.id, existing.recepcion_id));
+    // Revertir recepción a 'con_ot_activa' solo si tiene recepción asociada
+    if (existing.recepcion_id != null) {
+      await db
+        .update(recepciones)
+        .set({ estado: 'con_ot_activa', updated_at: sql`(datetime('now'))` })
+        .where(eq(recepciones.id, existing.recepcion_id));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

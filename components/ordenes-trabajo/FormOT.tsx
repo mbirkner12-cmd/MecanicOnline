@@ -13,7 +13,7 @@ export interface InsumoItem {
 
 export interface FormOTValues {
   cotizacion_id: number;
-  recepcion_id: number;
+  recepcion_id: number | null;
   vehiculo_id: number;
   cliente_id: number;
   mecanico_id?: number | null;
@@ -210,7 +210,7 @@ export function FormOT({
 
       const cotizacionIdsConOT = new Set(otData.map((ot) => ot.cotizacion_id));
       const disponibles = cotData.filter(
-        (c) => c.estado === "aceptada" && !cotizacionIdsConOT.has(c.id) && c.recepcion_id != null
+        (c) => c.estado === "aceptada" && !cotizacionIdsConOT.has(c.id)
       );
       setCotizacionesDisp(disponibles);
     } catch {
@@ -292,15 +292,10 @@ export function FormOT({
       setErrorMsg("No se pudieron cargar los datos de la cotización");
       return;
     }
-    if (!cotizacionData.recepcion_id) {
-      setErrorMsg("Esta cotización no tiene una recepción asociada. Primero debe registrar el ingreso del vehículo.");
-      return;
-    }
-
     try {
       const values: FormOTValues = {
         cotizacion_id: cotId,
-        recepcion_id: cotizacionData.recepcion_id,
+        recepcion_id: cotizacionData.recepcion_id ?? null,
         vehiculo_id: cotizacionData.vehiculo_id,
         cliente_id: cotizacionData.cliente_id,
         mecanico_id: mecanicoId ? Number(mecanicoId) : null,

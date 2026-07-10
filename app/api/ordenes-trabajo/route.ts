@@ -105,7 +105,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json() as {
       cotizacion_id: number;
-      recepcion_id: number;
+      recepcion_id?: number | null;
       vehiculo_id: number;
       cliente_id: number;
       mecanico_id?: number | null;
@@ -118,9 +118,9 @@ export async function POST(request: Request) {
 
     const { cotizacion_id, recepcion_id, vehiculo_id, cliente_id, mecanico_id, puesto_id, insumos, diagnostico, fecha_estimada_inicio, fecha_estimada_fin } = body;
 
-    if (!cotizacion_id || !recepcion_id || !vehiculo_id || !cliente_id) {
+    if (!cotizacion_id || !vehiculo_id || !cliente_id) {
       return NextResponse.json(
-        { error: 'cotizacion_id, recepcion_id, vehiculo_id y cliente_id son requeridos' },
+        { error: 'cotizacion_id, vehiculo_id y cliente_id son requeridos' },
         { status: 400 }
       );
     }
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
       .values({
         numero,
         cotizacion_id,
-        recepcion_id,
+        recepcion_id: recepcion_id ?? null,
         vehiculo_id,
         cliente_id,
         mecanico_id: mecanico_id ?? null,

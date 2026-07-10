@@ -1,7 +1,6 @@
 import { config } from 'dotenv';
-// Carga .env.production.local si existe (credenciales de producción), sino .env.local
-const envFile = process.argv.includes('--production') ? '.env.production.local' : '.env.local';
-config({ path: envFile });
+// Carga credenciales de producción desde .env.turso (archivo local, no subido a git)
+config({ path: '.env.turso' });
 
 import { createClient } from '@libsql/client';
 

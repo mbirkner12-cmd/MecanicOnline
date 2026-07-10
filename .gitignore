@@ -47,3 +47,4 @@ next-env.d.ts
 
 # Uploaded files (fotos de clientes/vehículos)
 /public/uploads/
+.env.turso

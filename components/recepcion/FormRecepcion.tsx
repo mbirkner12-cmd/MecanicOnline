@@ -822,7 +822,7 @@ export function FormRecepcion({
         </h3>
 
         <div className="grid gap-1.5">
-          <Label htmlFor="rut_cliente">RUT *</Label>
+          <Label htmlFor="rut_cliente">RUT</Label>
           <div className="relative">
             <Input
               id="rut_cliente"

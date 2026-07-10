@@ -101,9 +101,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!rut_cliente || !nombre_cliente) {
+    if (!nombre_cliente) {
       return NextResponse.json(
-        { error: 'RUT y nombre del cliente son requeridos' },
+        { error: 'El nombre del cliente es requerido' },
         { status: 400 }
       );
     }
@@ -113,11 +113,9 @@ export async function POST(request: Request) {
 
     // 1. Resolver cliente
     if (!clienteId) {
-      const existingCliente = await db
-        .select()
-        .from(clientes)
-        .where(eq(clientes.rut, rut_cliente))
-        .limit(1);
+      const existingCliente = rut_cliente
+        ? await db.select().from(clientes).where(eq(clientes.rut, rut_cliente)).limit(1)
+        : [];
 
       if (existingCliente.length > 0) {
         // Actualizar datos del cliente existente
@@ -137,7 +135,7 @@ export async function POST(request: Request) {
         const [newCliente] = await db
           .insert(clientes)
           .values({
-            rut: rut_cliente,
+            rut: rut_cliente || null,
             nombre: nombre_cliente,
             telefono: telefono_cliente || null,
             direccion: direccion_cliente || null,

@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 
 export const clientes = sqliteTable('clientes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  rut: text('rut').notNull().unique(),
+  rut: text('rut').unique(),
   nombre: text('nombre').notNull(),
   telefono: text('telefono'),
   correo: text('correo'),

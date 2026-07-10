@@ -230,7 +230,6 @@ export default function ClientesPage() {
                 onBlur={(e) => setForm((f) => ({ ...f, rut: formatRut(e.target.value) }))}
                 placeholder="12.345.678-9"
                 className="border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                required
               />
             </div>
             <div className="flex flex-col gap-1.5">

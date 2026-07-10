@@ -15,6 +15,7 @@ import {
   ClipboardList,
   LogOut,
   UserCircle,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useSession } from '@/lib/hooks/useSession';
 
@@ -26,6 +27,7 @@ type NavItem = {
 };
 
 const operativaItems: NavItem[] = [
+  { label: 'Panel', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Recepción', href: '/recepcion', icon: Car },
   { label: 'Cotizaciones', href: '/cotizaciones', icon: FileText },
   { label: 'Órdenes de trabajo', href: '/ordenes-trabajo', icon: ClipboardList },

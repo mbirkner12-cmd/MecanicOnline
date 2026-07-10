@@ -69,7 +69,7 @@ function Skeleton() {
       <Table>
         <TableHeader>
           <TableRow className="bg-zinc-50">
-            {["N° Cotización", "Vehículo", "Cliente", "Total", "Estado", "Acciones"].map((h) => (
+            {["N° Cotización", "Vehículo", "Cliente", "Total (c/IVA)", "Estado", "Acciones"].map((h) => (
               <TableHead key={h} className="font-semibold text-zinc-700">{h}</TableHead>
             ))}
           </TableRow>
@@ -202,7 +202,7 @@ export default function CotizacionesPage() {
                 <TableHead className="font-semibold text-zinc-700">N° Cotización</TableHead>
                 <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Vehículo</TableHead>
                 <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Cliente</TableHead>
-                <TableHead className="font-semibold text-zinc-700">Total</TableHead>
+                <TableHead className="font-semibold text-zinc-700">Total (c/IVA)</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Estado</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Acciones</TableHead>
               </TableRow>
@@ -222,7 +222,7 @@ export default function CotizacionesPage() {
                     {cot.cliente?.nombre ?? "—"}
                   </TableCell>
                   <TableCell className="font-medium text-zinc-900">
-                    {formatPesos(cot.total)}
+                    {formatPesos(Math.round(cot.total * 1.19))}
                   </TableCell>
                   <TableCell>
                     <EstadoBadgeCot estado={cot.estado} />

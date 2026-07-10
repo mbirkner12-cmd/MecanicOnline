@@ -596,7 +596,6 @@ export default function CotizacionDetallePage() {
               rut_cliente: cotizacion.cliente?.rut ?? "",
               nombre_cliente: cotizacion.cliente?.nombre ?? "",
               telefono_cliente: cotizacion.cliente?.telefono ?? "",
-              correo_cliente: cotizacion.cliente?.correo ?? "",
               direccion_cliente: "",
             }}
           />

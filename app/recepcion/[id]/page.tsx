@@ -161,9 +161,8 @@ export default function RecepcionDetallePage() {
             rut: values.rut_cliente,
             nombre: values.nombre_cliente,
             telefono: values.telefono_cliente || null,
-            correo: values.correo_cliente || null,
             direccion: values.direccion_cliente || null,
-            whatsapp: values.whatsapp_cliente || null,
+            whatsapp: values.telefono_cliente || null,
           }),
         });
       }
@@ -233,10 +232,8 @@ export default function RecepcionDetallePage() {
       cliente_id: recepcion.cliente_id,
       rut_cliente: recepcion.cliente?.rut ?? "",
       nombre_cliente: recepcion.cliente?.nombre ?? "",
-      telefono_cliente: recepcion.cliente?.telefono ?? "",
-      correo_cliente: recepcion.cliente?.correo ?? "",
+      telefono_cliente: recepcion.cliente?.telefono ?? recepcion.cliente?.whatsapp ?? "",
       direccion_cliente: recepcion.cliente?.direccion ?? "",
-      whatsapp_cliente: recepcion.cliente?.whatsapp ?? "",
       mecanico_id: recepcion.mecanico_id ? String(recepcion.mecanico_id) : "",
       puesto_id: recepcion.puesto_id ? String(recepcion.puesto_id) : "",
     };

@@ -79,9 +79,7 @@ export interface FormRecepcionValues {
   rut_cliente: string;
   nombre_cliente: string;
   telefono_cliente: string;
-  correo_cliente: string;
   direccion_cliente: string;
-  whatsapp_cliente?: string;
   // Motivo de ingreso
   motivo_ingreso?: string;
   // Asignación
@@ -164,11 +162,9 @@ export function FormRecepcion({
   const [rutCliente, setRutCliente] = useState(initialValues?.rut_cliente ?? "");
   const [nombreCliente, setNombreCliente] = useState(initialValues?.nombre_cliente ?? "");
   const [telefonoCliente, setTelefonoCliente] = useState(initialValues?.telefono_cliente ?? "");
-  const [correoCliente, setCorreoCliente] = useState(initialValues?.correo_cliente ?? "");
   const [direccionCliente, setDireccionCliente] = useState(
     initialValues?.direccion_cliente ?? ""
   );
-  const [whatsappCliente, setWhatsappCliente] = useState(initialValues?.whatsapp_cliente ?? "");
   const [clienteId, setClienteId] = useState<number | undefined>(initialValues?.cliente_id);
 
   // Motivo de ingreso
@@ -266,10 +262,8 @@ export function FormRecepcion({
           setClienteEncontrado(data);
           // Auto-rellenar
           setNombreCliente(data.nombre);
-          setTelefonoCliente(data.telefono ?? "");
-          setCorreoCliente(data.correo ?? "");
+          setTelefonoCliente(data.telefono ?? data.whatsapp ?? "");
           setDireccionCliente(data.direccion ?? "");
-          setWhatsappCliente(data.whatsapp ?? "");
           setClienteId(data.id);
         } else {
           setClienteEncontrado(null);
@@ -295,10 +289,8 @@ export function FormRecepcion({
       const c = vehiculoEncontrado.cliente;
       setRutCliente(c.rut);
       setNombreCliente(c.nombre);
-      setTelefonoCliente(c.telefono ?? "");
-      setCorreoCliente(c.correo ?? "");
+      setTelefonoCliente(c.telefono ?? c.whatsapp ?? "");
       setDireccionCliente(c.direccion ?? "");
-      setWhatsappCliente(c.whatsapp ?? "");
       setClienteId(c.id);
       setClienteEncontrado(c);
     }
@@ -316,7 +308,6 @@ export function FormRecepcion({
     setRutCliente("");
     setNombreCliente("");
     setTelefonoCliente("");
-    setCorreoCliente("");
     setDireccionCliente("");
     setClienteId(undefined);
     setClienteEncontrado(null);
@@ -436,9 +427,7 @@ export function FormRecepcion({
         rut_cliente: rutCliente,
         nombre_cliente: nombreCliente,
         telefono_cliente: telefonoCliente,
-        correo_cliente: correoCliente,
         direccion_cliente: direccionCliente,
-        whatsapp_cliente: whatsappCliente || undefined,
         motivo_ingreso: motivoIngreso || undefined,
         mecanico_id: mecanicoId,
         puesto_id: puestoId,
@@ -870,7 +859,7 @@ export function FormRecepcion({
             />
           </div>
           <div className="grid gap-1.5 col-span-2 sm:col-span-1">
-            <Label htmlFor="telefono_cliente">Teléfono</Label>
+            <Label htmlFor="telefono_cliente">Teléfono / WhatsApp</Label>
             <Input
               id="telefono_cliente"
               value={telefonoCliente}
@@ -880,32 +869,12 @@ export function FormRecepcion({
             />
           </div>
           <div className="grid gap-1.5 col-span-2 sm:col-span-1">
-            <Label htmlFor="correo_cliente">Correo</Label>
-            <Input
-              id="correo_cliente"
-              type="email"
-              value={correoCliente}
-              onChange={(e) => setCorreoCliente(e.target.value)}
-              placeholder="juan@ejemplo.com"
-            />
-          </div>
-          <div className="grid gap-1.5 col-span-2 sm:col-span-1">
             <Label htmlFor="direccion_cliente">Dirección</Label>
             <Input
               id="direccion_cliente"
               value={direccionCliente}
               onChange={(e) => setDireccionCliente(e.target.value)}
               placeholder="Av. Principal 123"
-            />
-          </div>
-          <div className="grid gap-1.5 col-span-2 sm:col-span-1">
-            <Label htmlFor="whatsapp_cliente">WhatsApp</Label>
-            <Input
-              id="whatsapp_cliente"
-              value={whatsappCliente}
-              onChange={(e) => setWhatsappCliente(e.target.value)}
-              onBlur={(e) => setWhatsappCliente(formatPhone(e.target.value))}
-              placeholder="+56 9 1234 5678"
             />
           </div>
         </div>

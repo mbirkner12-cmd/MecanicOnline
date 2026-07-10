@@ -60,7 +60,6 @@ export default function RecepcionPage() {
           rut_cliente: values.rut_cliente,
           nombre_cliente: values.nombre_cliente,
           telefono_cliente: values.telefono_cliente || null,
-          correo_cliente: values.correo_cliente || null,
           direccion_cliente: values.direccion_cliente || null,
           vehiculo_id: values.vehiculo_id,
           cliente_id: values.cliente_id,

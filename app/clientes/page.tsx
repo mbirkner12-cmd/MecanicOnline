@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Users, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatRut, normalizeRut, formatPhone } from "@/lib/format";
+import { formatRut, formatPhone } from "@/lib/format";
 import {
   Dialog,
   DialogContent,
@@ -28,9 +28,7 @@ interface ClienteForm {
   nombre: string;
   rut: string;
   telefono: string;
-  correo: string;
   direccion: string;
-  whatsapp: string;
 }
 
 function formatFecha(iso: string | null) {
@@ -47,7 +45,7 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState<ClienteRow | null>(null);
-  const [form, setForm] = useState<ClienteForm>({ nombre: "", rut: "", telefono: "", correo: "", direccion: "", whatsapp: "" });
+  const [form, setForm] = useState<ClienteForm>({ nombre: "", rut: "", telefono: "", direccion: "" });
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -73,10 +71,8 @@ export default function ClientesPage() {
     setForm({
       nombre: c.nombre,
       rut: formatRut(c.rut),
-      telefono: formatPhone(c.telefono ?? ""),
-      correo: c.correo ?? "",
+      telefono: formatPhone(c.telefono ?? c.whatsapp ?? ""),
       direccion: c.direccion ?? "",
-      whatsapp: formatPhone(c.whatsapp ?? ""),
     });
     setErrorMsg("");
   }
@@ -94,9 +90,8 @@ export default function ClientesPage() {
           nombre: form.nombre,
           rut: form.rut,
           telefono: form.telefono || null,
-          correo: form.correo || null,
           direccion: form.direccion || null,
-          whatsapp: form.whatsapp || null,
+          whatsapp: form.telefono || null,
         }),
       });
       if (!res.ok) {
@@ -238,36 +233,14 @@ export default function ClientesPage() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-zinc-700">Teléfono</label>
-                <input
-                  type="text"
-                  value={form.telefono}
-                  onChange={(e) => setForm((f) => ({ ...f, telefono: e.target.value }))}
-                  onBlur={(e) => setForm((f) => ({ ...f, telefono: formatPhone(e.target.value) }))}
-                  placeholder="+56 9 1234 5678"
-                  className="border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-zinc-700">WhatsApp</label>
-                <input
-                  type="text"
-                  value={form.whatsapp}
-                  onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))}
-                  onBlur={(e) => setForm((f) => ({ ...f, whatsapp: formatPhone(e.target.value) }))}
-                  placeholder="+56 9 1234 5678"
-                  className="border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                />
-              </div>
-            </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-zinc-700">Correo</label>
+              <label className="text-sm font-medium text-zinc-700">Teléfono / WhatsApp</label>
               <input
-                type="email"
-                value={form.correo}
-                onChange={(e) => setForm((f) => ({ ...f, correo: e.target.value }))}
+                type="text"
+                value={form.telefono}
+                onChange={(e) => setForm((f) => ({ ...f, telefono: e.target.value }))}
+                onBlur={(e) => setForm((f) => ({ ...f, telefono: formatPhone(e.target.value) }))}
+                placeholder="+56 9 1234 5678"
                 className="border border-zinc-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
               />
             </div>

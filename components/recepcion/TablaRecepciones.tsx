@@ -167,9 +167,8 @@ export function TablaRecepciones({ recepciones, onRefresh }: TablaRecepcionesPro
             rut: values.rut_cliente,
             nombre: values.nombre_cliente,
             telefono: values.telefono_cliente || null,
-            correo: values.correo_cliente || null,
             direccion: values.direccion_cliente || null,
-            whatsapp: values.whatsapp_cliente || null,
+            whatsapp: values.telefono_cliente || null,
           }),
         });
       }
@@ -300,10 +299,8 @@ export function TablaRecepciones({ recepciones, onRefresh }: TablaRecepcionesPro
       cliente_id: r.cliente_id,
       rut_cliente: r.cliente?.rut ?? "",
       nombre_cliente: r.cliente?.nombre ?? "",
-      telefono_cliente: r.cliente?.telefono ?? "",
-      correo_cliente: r.cliente?.correo ?? "",
+      telefono_cliente: r.cliente?.telefono ?? r.cliente?.whatsapp ?? "",
       direccion_cliente: r.cliente?.direccion ?? "",
-      whatsapp_cliente: r.cliente?.whatsapp ?? "",
       mecanico_id: r.mecanico_id ? String(r.mecanico_id) : "",
       puesto_id: r.puesto_id ? String(r.puesto_id) : "",
       motivo_ingreso: r.motivo_ingreso ?? "",

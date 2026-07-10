@@ -81,9 +81,7 @@ export async function POST(request: Request) {
       rut_cliente,
       nombre_cliente,
       telefono_cliente,
-      correo_cliente,
       direccion_cliente,
-      whatsapp_cliente,
       mecanico_id,
       puesto_id,
       vehiculo_id: bodyVehiculoId,
@@ -128,9 +126,8 @@ export async function POST(request: Request) {
           .set({
             nombre: nombre_cliente,
             telefono: telefono_cliente || null,
-            correo: correo_cliente || null,
             direccion: direccion_cliente || null,
-            whatsapp: whatsapp_cliente || null,
+            whatsapp: telefono_cliente || null,
           })
           .where(eq(clientes.id, existingCliente[0].id))
           .returning();
@@ -143,9 +140,8 @@ export async function POST(request: Request) {
             rut: rut_cliente,
             nombre: nombre_cliente,
             telefono: telefono_cliente || null,
-            correo: correo_cliente || null,
             direccion: direccion_cliente || null,
-            whatsapp: whatsapp_cliente || null,
+            whatsapp: telefono_cliente || null,
           })
           .returning();
         clienteId = newCliente.id;

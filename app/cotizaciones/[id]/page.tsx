@@ -77,14 +77,12 @@ function formatPesos(amount: number): string {
   }).format(amount);
 }
 
-function buildWhatsAppUrl(cot: CotizacionDetalle): string | null {
-  const phone = cot.cliente?.telefono ?? cot.cliente?.whatsapp ?? null;
-  if (!phone) return null;
-  // Normalizar número: quitar espacios, guiones, paréntesis, +
+function normalizePhone(phone: string): string {
   const digits = phone.replace(/\D/g, "");
-  // Si empieza en 9 (Chile sin código país) → agregar 56
-  const normalized = digits.startsWith("56") ? digits : digits.startsWith("9") ? `56${digits}` : digits;
+  return digits.startsWith("56") ? digits : digits.startsWith("9") ? `56${digits}` : digits;
+}
 
+function buildWhatsAppMsg(cot: CotizacionDetalle, pdfUrl: string): string {
   const neto = cot.total;
   const iva = Math.round(neto * 0.19);
   const total = Math.round(neto * 1.19);
@@ -92,7 +90,7 @@ function buildWhatsAppUrl(cot: CotizacionDetalle): string | null {
     ? `${cot.vehiculo.patente} — ${cot.vehiculo.marca} ${cot.vehiculo.modelo} ${cot.vehiculo.anio}`
     : "";
 
-  const msg = [
+  return [
     `Hola ${cot.cliente?.nombre ?? ""},`,
     ``,
     `Le enviamos la cotización *${cot.numero}* para su vehículo ${vehiculo}:`,
@@ -101,10 +99,10 @@ function buildWhatsAppUrl(cot: CotizacionDetalle): string | null {
     `• IVA (19%): ${formatPesos(iva)}`,
     `• *Total: ${formatPesos(total)}*`,
     ``,
+    `📄 PDF: ${pdfUrl}`,
+    ``,
     `Quedamos atentos a su respuesta.`,
   ].join("\n");
-
-  return `https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`;
 }
 
 function formatFecha(iso: string): string {
@@ -198,6 +196,7 @@ export default function CotizacionDetallePage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [ingresarOpen, setIngresarOpen] = useState(false);
   const [savingIngreso, setSavingIngreso] = useState(false);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
 
   const fetchCotizacion = async () => {
     setLoading(true);
@@ -296,6 +295,25 @@ export default function CotizacionDetallePage() {
     }
   };
 
+  const handleWhatsApp = async () => {
+    if (!cotizacion) return;
+    const phone = cotizacion.cliente?.telefono ?? cotizacion.cliente?.whatsapp ?? null;
+    if (!phone) return;
+    setWhatsappLoading(true);
+    try {
+      const res = await fetch(`/api/cotizaciones/${cotizacion.id}/pdf-share`, { method: "POST" });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Error al generar PDF");
+      const msg = buildWhatsAppMsg(cotizacion, data.url);
+      const waUrl = `https://wa.me/${normalizePhone(phone)}?text=${encodeURIComponent(msg)}`;
+      window.open(waUrl, "_blank");
+    } catch {
+      alert("No se pudo generar el PDF para compartir. Intenta de nuevo.");
+    } finally {
+      setWhatsappLoading(false);
+    }
+  };
+
   const getInitialValues = (): Partial<FormCotizacionValues> => {
     if (!cotizacion) return {};
     return {
@@ -382,13 +400,17 @@ export default function CotizacionDetallePage() {
                 </Button>
               </>
             )}
-            {buildWhatsAppUrl(cotizacion) && (
-              <a href={buildWhatsAppUrl(cotizacion)!} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm" className="flex items-center gap-1.5 text-green-700 border-green-200 hover:bg-green-50">
-                  <MessageCircle className="size-4" />
-                  WhatsApp
-                </Button>
-              </a>
+            {(cotizacion.cliente?.telefono ?? cotizacion.cliente?.whatsapp) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1.5 text-green-700 border-green-200 hover:bg-green-50"
+                onClick={handleWhatsApp}
+                disabled={whatsappLoading}
+              >
+                <MessageCircle className="size-4" />
+                {whatsappLoading ? "Generando..." : "WhatsApp"}
+              </Button>
             )}
             <a href={`/api/cotizaciones/${cotizacion.id}/pdf`} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="flex items-center gap-1.5">

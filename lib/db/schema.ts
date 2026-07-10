@@ -148,3 +148,14 @@ export const ordenes_trabajo = sqliteTable('ordenes_trabajo', {
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
   updated_at: text('updated_at').default(sql`(datetime('now'))`).notNull(),
 });
+
+export const eventos_calendario = sqliteTable('eventos_calendario', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  fecha: text('fecha').notNull(), // 'YYYY-MM-DD'
+  titulo: text('titulo').notNull(),
+  tipo: text('tipo', {
+    enum: ['entrada_vehiculo', 'retiro_vehiculo', 'entrega_vehiculo', 'cotizacion', 'otro'],
+  }).notNull().default('otro'),
+  descripcion: text('descripcion'),
+  created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});

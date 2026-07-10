@@ -273,10 +273,10 @@ export default function OrdenesTrabajoPAge() {
             <TableHeader>
               <TableRow className="bg-zinc-50">
                 <TableHead className="font-semibold text-zinc-700">N° OT</TableHead>
-                <TableHead className="font-semibold text-zinc-700">Patente</TableHead>
-                <TableHead className="font-semibold text-zinc-700">Marca y Modelo</TableHead>
-                <TableHead className="font-semibold text-zinc-700">Cliente</TableHead>
-                <TableHead className="font-semibold text-zinc-700">Mecánico</TableHead>
+                <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Patente</TableHead>
+                <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Marca y Modelo</TableHead>
+                <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Cliente</TableHead>
+                <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Mecánico</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Estado</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Acciones</TableHead>
               </TableRow>
@@ -287,18 +287,18 @@ export default function OrdenesTrabajoPAge() {
                   <TableCell className="font-mono font-medium text-zinc-900">
                     {ot.numero}
                   </TableCell>
-                  <TableCell className="font-mono font-medium text-zinc-900">
+                  <TableCell className="font-mono font-medium text-zinc-900 hidden md:table-cell">
                     {ot.vehiculo?.patente ?? "—"}
                   </TableCell>
-                  <TableCell className="text-zinc-700">
+                  <TableCell className="text-zinc-700 hidden md:table-cell">
                     {ot.vehiculo
                       ? `${ot.vehiculo.marca} ${ot.vehiculo.modelo}`
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-zinc-700">
+                  <TableCell className="text-zinc-700 hidden md:table-cell">
                     {ot.cliente?.nombre ?? "—"}
                   </TableCell>
-                  <TableCell className="text-zinc-600 text-sm">
+                  <TableCell className="text-zinc-600 text-sm hidden md:table-cell">
                     {ot.mecanico?.nombre ?? (
                       <span className="text-zinc-400 text-xs">Sin asignar</span>
                     )}

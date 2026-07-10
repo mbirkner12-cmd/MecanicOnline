@@ -156,11 +156,11 @@ export default function VehiculosPage() {
             <tr className="border-b border-zinc-200 bg-zinc-50">
               <th className="text-left px-4 py-3 font-medium text-zinc-500">Patente</th>
               <th className="text-left px-4 py-3 font-medium text-zinc-500">Vehículo</th>
-              <th className="text-left px-4 py-3 font-medium text-zinc-500">Año</th>
-              <th className="text-left px-4 py-3 font-medium text-zinc-500">Kilometraje</th>
-              <th className="text-left px-4 py-3 font-medium text-zinc-500">Cliente</th>
-              <th className="text-center px-4 py-3 font-medium text-zinc-500">Visitas</th>
-              <th className="text-left px-4 py-3 font-medium text-zinc-500">Última visita</th>
+              <th className="text-left px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Año</th>
+              <th className="text-left px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Kilometraje</th>
+              <th className="text-left px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Cliente</th>
+              <th className="text-center px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Visitas</th>
+              <th className="text-left px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Última visita</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -192,20 +192,20 @@ export default function VehiculosPage() {
                     {v.patente}
                   </td>
                   <td className="px-4 py-3 text-zinc-800">{v.marca} {v.modelo}</td>
-                  <td className="px-4 py-3 text-zinc-600">{v.anio}</td>
-                  <td className="px-4 py-3 text-zinc-600">{formatKm(v.kilometraje_actual)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{v.anio}</td>
+                  <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{formatKm(v.kilometraje_actual)}</td>
+                  <td className="px-4 py-3 hidden md:table-cell">
                     <div className="text-zinc-800">{v.cliente_nombre ?? "—"}</div>
                     {v.cliente_rut && (
                       <div className="text-zinc-400 text-xs font-mono">{v.cliente_rut}</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3 text-center hidden md:table-cell">
                     <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-zinc-100 text-zinc-700 text-xs font-semibold">
                       {v.num_visitas}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 text-xs">{formatFecha(v.ultima_visita)}</td>
+                  <td className="px-4 py-3 text-zinc-500 text-xs hidden md:table-cell">{formatFecha(v.ultima_visita)}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={(e) => openEdit(v, e)}

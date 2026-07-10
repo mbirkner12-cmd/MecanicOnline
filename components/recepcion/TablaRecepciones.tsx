@@ -331,9 +331,9 @@ export function TablaRecepciones({ recepciones, onRefresh }: TablaRecepcionesPro
           <TableHeader>
             <TableRow className="bg-zinc-50">
               <TableHead className="font-semibold text-zinc-700">Patente</TableHead>
-              <TableHead className="font-semibold text-zinc-700">Marca y Modelo</TableHead>
-              <TableHead className="font-semibold text-zinc-700">Cliente</TableHead>
-              <TableHead className="font-semibold text-zinc-700">Mecánico</TableHead>
+              <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Marca y Modelo</TableHead>
+              <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Cliente</TableHead>
+              <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Mecánico</TableHead>
               <TableHead className="font-semibold text-zinc-700">Estado</TableHead>
               <TableHead className="font-semibold text-zinc-700">Acciones</TableHead>
             </TableRow>
@@ -359,15 +359,15 @@ export function TablaRecepciones({ recepciones, onRefresh }: TablaRecepcionesPro
                     })()}
                   </span>
                 </TableCell>
-                <TableCell className="text-zinc-700">
+                <TableCell className="text-zinc-700 hidden md:table-cell">
                   {r.vehiculo
                     ? `${r.vehiculo.marca} ${r.vehiculo.modelo}`
                     : "—"}
                 </TableCell>
-                <TableCell className="text-zinc-700">
+                <TableCell className="text-zinc-700 hidden md:table-cell">
                   {r.cliente?.nombre ?? "—"}
                 </TableCell>
-                <TableCell className="text-zinc-600 text-sm">
+                <TableCell className="text-zinc-600 text-sm hidden md:table-cell">
                   {r.mecanico?.nombre ?? <span className="text-zinc-400 text-xs">Sin asignar</span>}
                 </TableCell>
                 <TableCell>

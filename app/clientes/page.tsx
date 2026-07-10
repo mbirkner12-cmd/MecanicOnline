@@ -150,12 +150,12 @@ export default function ClientesPage() {
           <thead>
             <tr className="border-b border-zinc-200 bg-zinc-50">
               <th className="text-left px-4 py-3 font-medium text-zinc-500">Nombre</th>
-              <th className="text-left px-4 py-3 font-medium text-zinc-500">RUT</th>
-              <th className="text-left px-4 py-3 font-medium text-zinc-500">Teléfono</th>
-              <th className="text-left px-4 py-3 font-medium text-zinc-500">Correo</th>
-              <th className="text-center px-4 py-3 font-medium text-zinc-500">Vehículos</th>
+              <th className="text-left px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">RUT</th>
+              <th className="text-left px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Teléfono</th>
+              <th className="text-left px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Correo</th>
+              <th className="text-center px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Vehículos</th>
               <th className="text-center px-4 py-3 font-medium text-zinc-500">Visitas</th>
-              <th className="text-left px-4 py-3 font-medium text-zinc-500">Última visita</th>
+              <th className="text-left px-4 py-3 font-medium text-zinc-500 hidden md:table-cell">Última visita</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -180,10 +180,10 @@ export default function ClientesPage() {
               filtrados.map((c) => (
                 <tr key={c.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-zinc-900">{c.nombre}</td>
-                  <td className="px-4 py-3 text-zinc-600 font-mono text-xs">{formatRut(c.rut)}</td>
-                  <td className="px-4 py-3 text-zinc-600">{c.telefono ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600">{c.correo ?? "—"}</td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3 text-zinc-600 font-mono text-xs hidden md:table-cell">{formatRut(c.rut)}</td>
+                  <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{c.telefono ?? "—"}</td>
+                  <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{c.correo ?? "—"}</td>
+                  <td className="px-4 py-3 text-center hidden md:table-cell">
                     <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
                       {c.num_vehiculos}
                     </span>
@@ -193,7 +193,7 @@ export default function ClientesPage() {
                       {c.num_visitas}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-zinc-500 text-xs">{formatFecha(c.ultima_visita)}</td>
+                  <td className="px-4 py-3 text-zinc-500 text-xs hidden md:table-cell">{formatFecha(c.ultima_visita)}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={(e) => openEdit(c, e)}

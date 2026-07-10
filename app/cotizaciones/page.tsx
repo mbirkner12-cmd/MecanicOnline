@@ -200,8 +200,8 @@ export default function CotizacionesPage() {
             <TableHeader>
               <TableRow className="bg-zinc-50">
                 <TableHead className="font-semibold text-zinc-700">N° Cotización</TableHead>
-                <TableHead className="font-semibold text-zinc-700">Vehículo</TableHead>
-                <TableHead className="font-semibold text-zinc-700">Cliente</TableHead>
+                <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Vehículo</TableHead>
+                <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Cliente</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Total</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Estado</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Acciones</TableHead>
@@ -213,12 +213,12 @@ export default function CotizacionesPage() {
                   <TableCell className="font-mono font-medium text-zinc-900">
                     {cot.numero}
                   </TableCell>
-                  <TableCell className="text-zinc-700">
+                  <TableCell className="text-zinc-700 hidden md:table-cell">
                     {cot.vehiculo
                       ? `${cot.vehiculo.patente} — ${cot.vehiculo.marca} ${cot.vehiculo.modelo}`
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-zinc-700">
+                  <TableCell className="text-zinc-700 hidden md:table-cell">
                     {cot.cliente?.nombre ?? "—"}
                   </TableCell>
                   <TableCell className="font-medium text-zinc-900">

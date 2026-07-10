@@ -74,6 +74,7 @@ export async function POST(request: Request) {
       marca,
       modelo,
       anio,
+      vin,
       kilometraje,
       nivel_bencina,
       foto_tablero_url,
@@ -163,6 +164,7 @@ export async function POST(request: Request) {
             .set({
               cliente_id: clienteId,
               kilometraje_actual: Number(kilometraje),
+              vin: vin || null,
               revision_tecnica_url: revision_tecnica_url || null,
               revision_tecnica_vencimiento: revision_tecnica_vencimiento || null,
               permiso_circulacion_url: permiso_circulacion_url || null,
@@ -172,6 +174,7 @@ export async function POST(request: Request) {
         } else {
           // Actualizar kilometraje si es mayor + documentos
           const updateSet: Record<string, unknown> = {
+            vin: vin || null,
             revision_tecnica_url: revision_tecnica_url || null,
             revision_tecnica_vencimiento: revision_tecnica_vencimiento || null,
             permiso_circulacion_url: permiso_circulacion_url || null,
@@ -194,6 +197,7 @@ export async function POST(request: Request) {
             marca,
             modelo,
             anio: Number(anio),
+            vin: vin || null,
             kilometraje_actual: Number(kilometraje),
             cliente_id: clienteId,
             revision_tecnica_url: revision_tecnica_url || null,

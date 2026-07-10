@@ -86,6 +86,7 @@ export async function PUT(
       marca,
       modelo,
       anio,
+      vin,
       kilometraje_actual,
       cliente_id,
       revision_tecnica_url,
@@ -99,6 +100,7 @@ export async function PUT(
     if (marca !== undefined) updateData.marca = marca;
     if (modelo !== undefined) updateData.modelo = modelo;
     if (anio !== undefined) updateData.anio = Number(anio);
+    if (vin !== undefined) updateData.vin = vin || null;
     if (kilometraje_actual !== undefined) updateData.kilometraje_actual = Number(kilometraje_actual);
     if (cliente_id !== undefined) updateData.cliente_id = Number(cliente_id);
     if (revision_tecnica_url !== undefined) updateData.revision_tecnica_url = revision_tecnica_url || null;

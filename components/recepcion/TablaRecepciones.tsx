@@ -46,6 +46,7 @@ export interface RecepcionRow {
     patente: string;
     marca: string;
     modelo: string;
+    vin?: string | null;
     anio: number;
     kilometraje_actual: number;
     revision_tecnica_vencimiento: string | null;
@@ -290,6 +291,7 @@ export function TablaRecepciones({ recepciones, onRefresh }: TablaRecepcionesPro
       marca: r.vehiculo?.marca ?? "",
       modelo: r.vehiculo?.modelo ?? "",
       anio: String(r.vehiculo?.anio ?? ""),
+      vin: r.vehiculo?.vin ?? "",
       kilometraje: String(r.kilometraje),
       nivel_bencina: r.nivel_bencina ?? "",
       foto_tablero_url: r.foto_tablero_url ?? "",

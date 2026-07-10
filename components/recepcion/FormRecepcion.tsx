@@ -65,6 +65,7 @@ export interface FormRecepcionValues {
   marca: string;
   modelo: string;
   anio: string;
+  vin?: string;
   kilometraje: string;
   nivel_bencina: string;
   foto_tablero_url?: string;
@@ -131,6 +132,7 @@ export function FormRecepcion({
   const [marca, setMarca] = useState(initialValues?.marca ?? "");
   const [modelo, setModelo] = useState(initialValues?.modelo ?? "");
   const [anio, setAnio] = useState(initialValues?.anio ?? "");
+  const [vin, setVin] = useState(initialValues?.vin ?? "");
   const [kilometraje, setKilometraje] = useState(initialValues?.kilometraje ?? "");
   const [nivelBencina, setNivelBencina] = useState(initialValues?.nivel_bencina ?? "");
   const [vehiculoId, setVehiculoId] = useState<number | undefined>(initialValues?.vehiculo_id);
@@ -415,6 +417,7 @@ export function FormRecepcion({
         marca,
         modelo,
         anio,
+        vin: vin.toUpperCase() || undefined,
         kilometraje,
         nivel_bencina: nivelBencina,
         foto_tablero_url: fotoTableroUrl || undefined,
@@ -564,6 +567,18 @@ export function FormRecepcion({
               onChange={(e) => setKilometraje(e.target.value)}
               placeholder="50000"
               min={0}
+            />
+          </div>
+          <div className="grid gap-1.5 col-span-2">
+            <Label htmlFor="vin">VIN</Label>
+            <Input
+              id="vin"
+              value={vin}
+              onChange={(e) => setVin(e.target.value.toUpperCase())}
+              placeholder="1HGBH41JXMN109186"
+              maxLength={17}
+              readOnly={vehiculoReadonly && mode !== "edit"}
+              className={`uppercase font-mono text-xs${vehiculoReadonly && mode !== "edit" ? " bg-zinc-50" : ""}`}
             />
           </div>
         </div>

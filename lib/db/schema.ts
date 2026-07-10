@@ -18,6 +18,7 @@ export const vehiculos = sqliteTable('vehiculos', {
   marca: text('marca').notNull(),
   modelo: text('modelo').notNull(),
   anio: integer('anio').notNull(),
+  vin: text('vin'),
   kilometraje_actual: integer('kilometraje_actual').notNull(),
   cliente_id: integer('cliente_id').notNull().references(() => clientes.id),
   revision_tecnica_url: text('revision_tecnica_url'),

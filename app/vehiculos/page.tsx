@@ -17,6 +17,7 @@ interface VehiculoRow {
   marca: string;
   modelo: string;
   anio: number;
+  vin: string | null;
   kilometraje_actual: number;
   cliente_id: number;
   cliente_nombre: string | null;
@@ -31,6 +32,7 @@ interface VehiculoForm {
   marca: string;
   modelo: string;
   anio: string;
+  vin: string;
   kilometraje_actual: string;
 }
 
@@ -53,7 +55,7 @@ export default function VehiculosPage() {
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState<VehiculoRow | null>(null);
-  const [form, setForm] = useState<VehiculoForm>({ patente: "", marca: "", modelo: "", anio: "", kilometraje_actual: "" });
+  const [form, setForm] = useState<VehiculoForm>({ patente: "", marca: "", modelo: "", anio: "", vin: "", kilometraje_actual: "" });
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -81,6 +83,7 @@ export default function VehiculosPage() {
       marca: v.marca,
       modelo: v.modelo,
       anio: String(v.anio),
+      vin: v.vin ?? "",
       kilometraje_actual: String(v.kilometraje_actual),
     });
     setErrorMsg("");
@@ -100,6 +103,7 @@ export default function VehiculosPage() {
           marca: form.marca,
           modelo: form.modelo,
           anio: Number(form.anio),
+          vin: form.vin || null,
           kilometraje_actual: Number(form.kilometraje_actual),
         }),
       });
@@ -259,6 +263,17 @@ export default function VehiculosPage() {
                   required
                 />
               </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-zinc-700">VIN</label>
+              <input
+                type="text"
+                value={form.vin}
+                onChange={(e) => setForm((f) => ({ ...f, vin: e.target.value.toUpperCase() }))}
+                placeholder="1HGBH41JXMN109186"
+                maxLength={17}
+                className="border border-zinc-300 rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">

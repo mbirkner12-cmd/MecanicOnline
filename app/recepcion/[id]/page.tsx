@@ -45,6 +45,7 @@ interface RecepcionDetalle {
     marca: string;
     modelo: string;
     anio: number;
+    vin?: string | null;
     kilometraje_actual: number;
     revision_tecnica_url?: string | null;
     revision_tecnica_vencimiento?: string | null;
@@ -221,6 +222,7 @@ export default function RecepcionDetallePage() {
       marca: recepcion.vehiculo?.marca ?? "",
       modelo: recepcion.vehiculo?.modelo ?? "",
       anio: String(recepcion.vehiculo?.anio ?? ""),
+      vin: recepcion.vehiculo?.vin ?? "",
       kilometraje: String(recepcion.kilometraje),
       nivel_bencina: recepcion.nivel_bencina ?? "",
       foto_tablero_url: recepcion.foto_tablero_url ?? "",

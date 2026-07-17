@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { recepciones, vehiculos, clientes, mecanicos, puestos, cotizaciones, ordenes_trabajo } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 
 export async function GET() {
   try {
@@ -58,6 +58,49 @@ export async function GET() {
       .leftJoin(mecanicos, eq(recepciones.mecanico_id, mecanicos.id))
       .leftJoin(puestos, eq(recepciones.puesto_id, puestos.id))
       .orderBy(recepciones.created_at);
+
+    // Sincronizar recepciones cuya OT ya fue entregada pero el estado no refleja eso
+    const recepcionesActivas = result.filter((r) => r.estado === 'con_ot_activa');
+    if (recepcionesActivas.length > 0) {
+      const ids = recepcionesActivas.map((r) => r.id);
+      const otsEntregadas = await db
+        .select({ recepcion_id: ordenes_trabajo.recepcion_id })
+        .from(ordenes_trabajo)
+        .where(
+          inArray(ordenes_trabajo.recepcion_id, ids)
+        )
+        .then((rows) =>
+          rows
+            .filter((r) => r.recepcion_id !== null)
+            .map((r) => r.recepcion_id as number)
+        );
+
+      // Obtener solo las OTs entregadas
+      const otsEntregadasIds: number[] = [];
+      for (const recepcionId of otsEntregadas) {
+        const ot = await db
+          .select({ estado: ordenes_trabajo.estado, recepcion_id: ordenes_trabajo.recepcion_id })
+          .from(ordenes_trabajo)
+          .where(eq(ordenes_trabajo.recepcion_id, recepcionId))
+          .limit(1);
+        if (ot[0]?.estado === 'entregado') {
+          otsEntregadasIds.push(recepcionId);
+        }
+      }
+
+      if (otsEntregadasIds.length > 0) {
+        await db
+          .update(recepciones)
+          .set({ estado: 'entregado', updated_at: sql`(datetime('now'))` })
+          .where(inArray(recepciones.id, otsEntregadasIds));
+        // Corregir el array en memoria para no re-fetcher
+        for (const r of result) {
+          if (otsEntregadasIds.includes(r.id)) {
+            r.estado = 'entregado';
+          }
+        }
+      }
+    }
 
     return NextResponse.json(result);
   } catch (error) {

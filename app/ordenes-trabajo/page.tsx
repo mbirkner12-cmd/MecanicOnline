@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Eye, Pencil } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -122,6 +122,10 @@ export default function OrdenesTrabajoPAge() {
   const [editandoOT, setEditandoOT] = useState<OTRow | null>(null);
   const [editLoading, setEditLoading] = useState(false);
 
+  // Eliminar dialog
+  const [eliminarOT, setEliminarOT] = useState<OTRow | null>(null);
+  const [eliminarLoading, setEliminarLoading] = useState(false);
+
   const fetchOTs = useCallback(async () => {
     setLoading(true);
     setErrorMsg("");
@@ -209,6 +213,25 @@ export default function OrdenesTrabajoPAge() {
       await fetchOTs();
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  // ── Eliminar OT ──────────────────────────────────────────────────────────────
+  const handleEliminar = async () => {
+    if (!eliminarOT) return;
+    setEliminarLoading(true);
+    try {
+      const res = await fetch(`/api/ordenes-trabajo/${eliminarOT.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? 'Error al eliminar OT');
+      }
+      setEliminarOT(null);
+      await fetchOTs();
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Error al eliminar OT');
+    } finally {
+      setEliminarLoading(false);
     }
   };
 
@@ -339,6 +362,17 @@ export default function OrdenesTrabajoPAge() {
                           Cambiar estado
                         </Button>
                       )}
+
+                      {/* Eliminar */}
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Eliminar OT"
+                        className="text-red-500 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setEliminarOT(ot)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -397,6 +431,31 @@ export default function OrdenesTrabajoPAge() {
           sinRecepcion={cambiarEstadoOT.recepcion_id === null}
         />
       )}
+
+      {/* Dialog Eliminar OT */}
+      <Dialog open={!!eliminarOT} onOpenChange={(o) => { if (!o) setEliminarOT(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar orden de trabajo</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-600">
+            ¿Seguro que quieres eliminar la OT <span className="font-mono font-semibold">{eliminarOT?.numero}</span>?
+            Esta acción no se puede deshacer.
+          </p>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setEliminarOT(null)} disabled={eliminarLoading}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleEliminar}
+              disabled={eliminarLoading}
+            >
+              {eliminarLoading ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -50,6 +50,7 @@ interface OTDetalleMecanico {
   } | null;
   cliente: {
     id: number;
+    rut: string;
     nombre: string;
     telefono: string | null;
   } | null;
@@ -592,6 +593,7 @@ export default function MecanicoOTDetallePage() {
               modelo: ot.vehiculo?.modelo ?? '',
               anio: ot.vehiculo?.anio ? String(ot.vehiculo.anio) : '',
               kilometraje: ot.vehiculo?.kilometraje_actual ? String(ot.vehiculo.kilometraje_actual) : '',
+              rut_cliente: ot.cliente?.rut ?? '',
               nombre_cliente: ot.cliente?.nombre ?? '',
               telefono_cliente: ot.cliente?.telefono ?? '',
             }}

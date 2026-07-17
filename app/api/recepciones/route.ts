@@ -59,45 +59,45 @@ export async function GET() {
       .leftJoin(puestos, eq(recepciones.puesto_id, puestos.id))
       .orderBy(recepciones.created_at);
 
-    // Sincronizar recepciones cuya OT ya fue entregada pero el estado no refleja eso
+    // Sincronizar recepciones cuya OT ya fue entregada pero el estado no refleja eso.
+    // La OT puede vincularse a la recepción directamente (OT.recepcion_id) o
+    // indirectamente vía cotización (OT.cotizacion_id → cotizacion.recepcion_id).
     const recepcionesActivas = result.filter((r) => r.estado === 'con_ot_activa');
     if (recepcionesActivas.length > 0) {
       const ids = recepcionesActivas.map((r) => r.id);
-      const otsEntregadas = await db
-        .select({ recepcion_id: ordenes_trabajo.recepcion_id })
-        .from(ordenes_trabajo)
-        .where(
-          inArray(ordenes_trabajo.recepcion_id, ids)
-        )
-        .then((rows) =>
-          rows
-            .filter((r) => r.recepcion_id !== null)
-            .map((r) => r.recepcion_id as number)
-        );
+      const toFixIds = new Set<number>();
 
-      // Obtener solo las OTs entregadas
-      const otsEntregadasIds: number[] = [];
-      for (const recepcionId of otsEntregadas) {
-        const ot = await db
-          .select({ estado: ordenes_trabajo.estado, recepcion_id: ordenes_trabajo.recepcion_id })
-          .from(ordenes_trabajo)
-          .where(eq(ordenes_trabajo.recepcion_id, recepcionId))
-          .limit(1);
-        if (ot[0]?.estado === 'entregado') {
-          otsEntregadasIds.push(recepcionId);
+      // Path 1: OT.recepcion_id apunta directamente a la recepción
+      const viaDirecta = await db
+        .select({ recepcion_id: ordenes_trabajo.recepcion_id, estado: ordenes_trabajo.estado })
+        .from(ordenes_trabajo)
+        .where(inArray(ordenes_trabajo.recepcion_id, ids));
+      for (const row of viaDirecta) {
+        if (row.estado === 'entregado' && row.recepcion_id !== null) {
+          toFixIds.add(row.recepcion_id);
         }
       }
 
-      if (otsEntregadasIds.length > 0) {
+      // Path 2: OT.cotizacion_id → cotizacion.recepcion_id apunta a la recepción
+      const viaCotizacion = await db
+        .select({ recepcion_id: cotizaciones.recepcion_id, estado: ordenes_trabajo.estado })
+        .from(ordenes_trabajo)
+        .leftJoin(cotizaciones, eq(ordenes_trabajo.cotizacion_id, cotizaciones.id))
+        .where(inArray(cotizaciones.recepcion_id, ids));
+      for (const row of viaCotizacion) {
+        if (row.estado === 'entregado' && row.recepcion_id !== null) {
+          toFixIds.add(row.recepcion_id);
+        }
+      }
+
+      if (toFixIds.size > 0) {
+        const fixList = Array.from(toFixIds);
         await db
           .update(recepciones)
           .set({ estado: 'entregado', updated_at: sql`(datetime('now'))` })
-          .where(inArray(recepciones.id, otsEntregadasIds));
-        // Corregir el array en memoria para no re-fetcher
+          .where(inArray(recepciones.id, fixList));
         for (const r of result) {
-          if (otsEntregadasIds.includes(r.id)) {
-            r.estado = 'entregado';
-          }
+          if (toFixIds.has(r.id)) r.estado = 'entregado';
         }
       }
     }

@@ -20,7 +20,8 @@ import { EstadoBadgeOT, type EstadoOT } from "@/components/ordenes-trabajo/Estad
 import { CambiarEstadoDialog } from "@/components/ordenes-trabajo/CambiarEstadoDialog";
 import { FormOT, type FormOTValues, type InsumoItem } from "@/components/ordenes-trabajo/FormOT";
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
-import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck } from "lucide-react";
+import { ObservacionesOT, type ObservacionItem } from "@/components/ordenes-trabajo/ObservacionesOT";
+import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck, FileDown } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTDetalle {
@@ -79,6 +80,7 @@ interface OTDetalle {
     estado: string;
     fecha_hora_ingreso: string;
   } | null;
+  observaciones: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -323,6 +325,18 @@ export default function OTDetallePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {(ot.estado === 'listo_para_entregar' || ot.estado === 'entregado') && (
+              <a
+                href={`/api/ordenes-trabajo/${ot.id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" className="flex items-center gap-2">
+                  <FileDown className="size-4" />
+                  Descargar PDF
+                </Button>
+              </a>
+            )}
             {ot.recepcion_id === null && (
               <Button
                 variant="outline"
@@ -632,6 +646,13 @@ export default function OTDetallePage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Observaciones del vehículo */}
+        <ObservacionesOT
+          otId={ot.id}
+          initialObservaciones={(() => { try { return JSON.parse(ot.observaciones ?? '[]') as ObservacionItem[]; } catch { return []; } })()}
+          editable={ot.estado === 'en_reparacion'}
+        />
       </div>
 
       {/* Dialog Cambiar Estado */}

@@ -17,6 +17,12 @@ interface InsumoItem {
   unidad: string;
 }
 
+interface ObservacionItem {
+  comentario: string;
+  urgencia: 'baja' | 'media' | 'alta';
+  fecha: string;
+}
+
 // ── Shared: get OT by id with all joins ─────────────────────────────────────
 async function getOTById(id: number) {
   const result = await db
@@ -31,6 +37,7 @@ async function getOTById(id: number) {
       puesto_id: ordenes_trabajo.puesto_id,
       insumos: ordenes_trabajo.insumos,
       tareas_completadas: ordenes_trabajo.tareas_completadas,
+      observaciones: ordenes_trabajo.observaciones,
       diagnostico: ordenes_trabajo.diagnostico,
       fecha_estimada_inicio: ordenes_trabajo.fecha_estimada_inicio,
       fecha_estimada_fin: ordenes_trabajo.fecha_estimada_fin,
@@ -143,6 +150,7 @@ export async function PUT(
       recepcion_id?: number | null;
       insumos?: InsumoItem[];
       tareas_completadas?: boolean[];
+      observaciones?: ObservacionItem[];
       fecha_estimada_inicio?: string | null;
       fecha_estimada_fin?: string | null;
       fecha_hora_inicio?: string | null;
@@ -179,6 +187,9 @@ export async function PUT(
     }
     if (body.tareas_completadas !== undefined) {
       updateFields.tareas_completadas = JSON.stringify(body.tareas_completadas);
+    }
+    if (body.observaciones !== undefined) {
+      updateFields.observaciones = JSON.stringify(body.observaciones);
     }
     if (body.fecha_estimada_inicio !== undefined) {
       updateFields.fecha_estimada_inicio = body.fecha_estimada_inicio;

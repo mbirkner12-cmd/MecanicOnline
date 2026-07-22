@@ -195,6 +195,17 @@ async function main() {
     console.log('✓ 0013 ya aplicado (recepcion_id ya es nullable)');
   }
 
+  // --- Migration 0014: add observaciones to ordenes_trabajo ---
+  const hasObservaciones = otInfo.rows.some((r) => r[1] === 'observaciones');
+  console.log('¿Tiene observaciones en OT?', hasObservaciones);
+  if (!hasObservaciones) {
+    console.log('\nAplicando 0014: columna observaciones en ordenes_trabajo...');
+    await client.execute(`ALTER TABLE \`ordenes_trabajo\` ADD COLUMN \`observaciones\` text NOT NULL DEFAULT '[]'`);
+    console.log('✓ 0014 aplicado');
+  } else {
+    console.log('✓ 0014 ya aplicado (observaciones ya existe)');
+  }
+
   console.log('\n¡Migraciones completadas!');
   await client.close();
 }

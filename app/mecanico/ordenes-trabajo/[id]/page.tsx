@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { EstadoBadgeOT, type EstadoOT } from '@/components/ordenes-trabajo/EstadoBadgeOT';
-import { ArrowLeft, Car, User, Wrench, Calendar, FileText, Package, ClipboardList, CheckCircle2, Circle, ClipboardCheck } from 'lucide-react';
+import { ObservacionesOT, type ObservacionItem } from '@/components/ordenes-trabajo/ObservacionesOT';
+import { ArrowLeft, Car, User, Wrench, Calendar, FileText, Package, ClipboardList, CheckCircle2, Circle, ClipboardCheck, FileDown } from 'lucide-react';
 import { DiagnosticoDisplay } from '@/components/diagnostico/DiagnosticoDisplay';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormRecepcion, type FormRecepcionValues } from '@/components/recepcion/FormRecepcion';
@@ -77,6 +78,7 @@ interface OTDetalleMecanico {
     repuestos: string;
     retiro_entrega_monto: number;
   } | null;
+  observaciones: string;
 }
 
 function formatFecha(iso: string | null | undefined): string {
@@ -295,9 +297,21 @@ export default function MecanicoOTDetallePage() {
             </div>
           )}
           {(ot.estado === 'listo_para_entregar' || ot.estado === 'entregado') && (
-            <p className="text-sm text-zinc-500 italic">
-              {ot.estado === 'entregado' ? 'OT entregada al cliente.' : 'Esperando entrega por el jefe.'}
-            </p>
+            <div className="flex flex-col items-end gap-2">
+              <p className="text-sm text-zinc-500 italic">
+                {ot.estado === 'entregado' ? 'OT entregada al cliente.' : 'Esperando entrega por el jefe.'}
+              </p>
+              <a
+                href={`/api/ordenes-trabajo/${ot.id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" className="flex items-center gap-2">
+                  <FileDown className="size-4" />
+                  Descargar PDF
+                </Button>
+              </a>
+            </div>
           )}
         </div>
       </div>
@@ -571,6 +585,13 @@ export default function MecanicoOTDetallePage() {
           })()}
         </CardContent>
       </Card>
+
+      {/* Observaciones del vehículo */}
+      <ObservacionesOT
+        otId={ot.id}
+        initialObservaciones={(() => { try { return JSON.parse(ot.observaciones ?? '[]') as ObservacionItem[]; } catch { return []; } })()}
+        editable={ot.estado === 'en_reparacion'}
+      />
 
       {/* Dialog Registrar Recepción */}
       <Dialog open={recepcionDialogOpen} onOpenChange={(o) => { if (!o) setRecepcionDialogOpen(false); }}>

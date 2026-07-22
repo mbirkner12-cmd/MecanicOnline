@@ -142,6 +142,7 @@ export const ordenes_trabajo = sqliteTable('ordenes_trabajo', {
   fecha_hora_inicio: text('fecha_hora_inicio'),
   fecha_hora_fin: text('fecha_hora_fin'),
   tareas_completadas: text('tareas_completadas').default('[]').notNull(),
+  observaciones: text('observaciones').default('[]').notNull(),
   estado: text('estado', {
     enum: ['creada', 'en_reparacion', 'listo_para_entregar', 'entregado'],
   }).notNull().default('creada'),

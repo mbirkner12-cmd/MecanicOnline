@@ -53,10 +53,15 @@ export default function RecepcionPage() {
           marca: values.marca,
           modelo: values.modelo,
           anio: values.anio,
+          vin: values.vin || null,
           kilometraje: values.kilometraje,
           nivel_bencina: values.nivel_bencina || null,
           foto_tablero_url: values.foto_tablero_url || null,
           fotos_urls: values.fotos_urls,
+          revision_tecnica_url: values.revision_tecnica_url || null,
+          revision_tecnica_vencimiento: values.revision_tecnica_vencimiento || null,
+          permiso_circulacion_url: values.permiso_circulacion_url || null,
+          permiso_circulacion_vencimiento: values.permiso_circulacion_vencimiento || null,
           rut_cliente: values.rut_cliente,
           nombre_cliente: values.nombre_cliente,
           telefono_cliente: values.telefono_cliente || null,
@@ -65,6 +70,7 @@ export default function RecepcionPage() {
           cliente_id: values.cliente_id,
           mecanico_id: values.mecanico_id ? Number(values.mecanico_id) : null,
           puesto_id: values.puesto_id ? Number(values.puesto_id) : null,
+          motivo_ingreso: values.motivo_ingreso || null,
         }),
       });
 

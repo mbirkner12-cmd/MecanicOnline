@@ -442,6 +442,14 @@ export function FormRecepcion({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      {/* Error — arriba del todo para que sea siempre visible */}
+      {errorMsg && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       {/* Sección 1: Vehículo */}
       <div className="space-y-4">
         <h3 className="font-semibold text-zinc-900 border-b border-zinc-100 pb-2">
@@ -937,13 +945,6 @@ export function FormRecepcion({
       </div>
 
       {/* Error */}
-      {errorMsg && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          <AlertCircle className="size-4 shrink-0 mt-0.5" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
       {/* Footer */}
       <div className={cn(
         "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end"

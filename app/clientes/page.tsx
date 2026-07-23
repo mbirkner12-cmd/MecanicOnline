@@ -13,7 +13,7 @@ import {
 
 interface ClienteRow {
   id: number;
-  rut: string;
+  rut: string | null;
   nombre: string;
   telefono: string | null;
   correo: string | null;
@@ -70,7 +70,7 @@ export default function ClientesPage() {
     setEditando(c);
     setForm({
       nombre: c.nombre,
-      rut: formatRut(c.rut),
+      rut: formatRut(c.rut ?? ""),
       telefono: formatPhone(c.telefono ?? c.whatsapp ?? ""),
       direccion: c.direccion ?? "",
     });
@@ -111,7 +111,7 @@ export default function ClientesPage() {
     const q = busqueda.toLowerCase();
     return (
       c.nombre.toLowerCase().includes(q) ||
-      c.rut.toLowerCase().includes(q) ||
+      (c.rut ?? "").toLowerCase().includes(q) ||
       (c.telefono ?? "").toLowerCase().includes(q) ||
       (c.correo ?? "").toLowerCase().includes(q)
     );
@@ -175,7 +175,7 @@ export default function ClientesPage() {
               filtrados.map((c) => (
                 <tr key={c.id} className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-zinc-900">{c.nombre}</td>
-                  <td className="px-4 py-3 text-zinc-600 font-mono text-xs hidden md:table-cell">{formatRut(c.rut)}</td>
+                  <td className="px-4 py-3 text-zinc-600 font-mono text-xs hidden md:table-cell">{c.rut ? formatRut(c.rut) : "—"}</td>
                   <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{c.telefono ?? "—"}</td>
                   <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{c.correo ?? "—"}</td>
                   <td className="px-4 py-3 text-center hidden md:table-cell">

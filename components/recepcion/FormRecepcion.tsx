@@ -435,8 +435,8 @@ export function FormRecepcion({
         mecanico_id: mecanicoId,
         puesto_id: puestoId,
       });
-    } catch {
-      setErrorMsg("Error al guardar la recepción. Intenta de nuevo.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Error al guardar la recepción. Intenta de nuevo.");
     }
   };
 

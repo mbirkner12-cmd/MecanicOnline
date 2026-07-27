@@ -357,11 +357,41 @@ export function FormRecepcion({
     });
   };
 
+  const compressImage = (file: File, maxPx = 1920, quality = 0.82): Promise<File> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          if (width >= height) { height = Math.round((height * maxPx) / width); width = maxPx; }
+          else { width = Math.round((width * maxPx) / height); height = maxPx; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        const jpgName = file.name.replace(/\.[^.]+$/, ".jpg");
+        canvas.toBlob(
+          (blob) => resolve(blob ? new File([blob], jpgName, { type: "image/jpeg" }) : file),
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+
   const uploadFile = async (file: File): Promise<string> => {
+    const compressed = await compressImage(file);
     const fd = new FormData();
-    fd.append("file", file);
+    fd.append("file", compressed);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) throw new Error("Error al subir archivo");
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(data.error ?? "Error al subir archivo");
+    }
     const data = (await res.json()) as { url: string };
     return data.url;
   };

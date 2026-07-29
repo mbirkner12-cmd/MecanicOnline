@@ -442,6 +442,26 @@ export function FormCotizacion({
     e.preventDefault();
     setErrorMsg("");
 
+    // ── Edit mode: solo actualiza items, no necesita recepción ────────────
+    if (mode === "edit") {
+      try {
+        await onSubmit({
+          recepcion_id: initialValues?.recepcion_id ?? null,
+          vehiculo_id: initialValues?.vehiculo_id ?? 0,
+          cliente_id: initialValues?.cliente_id ?? 0,
+          mano_de_obra_detalle: JSON.stringify(manoDeObraItems),
+          mano_de_obra_monto: totalManoDeObra,
+          repuestos,
+          recomendaciones,
+          retiro_entrega_monto: retiroEntregaMonto,
+          total: totalReparacion,
+        });
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : "Error al guardar");
+      }
+      return;
+    }
+
     // ── Sin recepción path ────────────────────────────────────────────────
     if (sinRecepcion && !recepcionId) {
       if (!srPatente.trim()) { setErrorMsg("La patente es requerida."); return; }

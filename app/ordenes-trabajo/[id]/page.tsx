@@ -107,9 +107,6 @@ function formatPesos(amount: number): string {
   }).format(amount);
 }
 
-const SIGUIENTE_ESTADO_JEFE_SOLO: Record<string, EstadoOT> = {
-  listo_para_entregar: "entregado",
-};
 const SIGUIENTE_ESTADO_COMPLETO: Record<string, EstadoOT> = {
   creada: "en_reparacion",
   en_reparacion: "listo_para_entregar",
@@ -347,7 +344,7 @@ export default function OTDetallePage() {
                 Registrar recepción
               </Button>
             )}
-            {(ot.mecanico_id === null ? SIGUIENTE_ESTADO_COMPLETO : SIGUIENTE_ESTADO_JEFE_SOLO)[ot.estado] && (
+            {SIGUIENTE_ESTADO_COMPLETO[ot.estado] && (
               <Button
                 variant="outline"
                 onClick={() => setCambiarEstadoOpen(true)}
@@ -656,14 +653,14 @@ export default function OTDetallePage() {
       </div>
 
       {/* Dialog Cambiar Estado */}
-      {ot && (ot.mecanico_id === null ? SIGUIENTE_ESTADO_COMPLETO : SIGUIENTE_ESTADO_JEFE_SOLO)[ot.estado] && (
+      {ot && SIGUIENTE_ESTADO_COMPLETO[ot.estado] && (
         <CambiarEstadoDialog
           ot={ot}
           open={cambiarEstadoOpen}
           onOpenChange={(o) => { if (!o) setCambiarEstadoOpen(false); }}
           onConfirm={handleCambiarEstado}
           loading={cambiarEstadoLoading}
-          jefeOnly={ot.mecanico_id !== null}
+          jefeOnly={false}
           sinRecepcion={ot.recepcion_id === null}
         />
       )}

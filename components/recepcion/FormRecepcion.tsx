@@ -1,5 +1,6 @@
 "use client";
 
+import { upload } from "@vercel/blob/client";
 import { useState, useEffect, useRef, useCallback, useDeferredValue } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -386,15 +387,11 @@ export function FormRecepcion({
 
   const uploadFile = async (file: File): Promise<string> => {
     const compressed = await compressImage(file);
-    const fd = new FormData();
-    fd.append("file", compressed);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(data.error ?? "Error al subir archivo");
-    }
-    const data = (await res.json()) as { url: string };
-    return data.url;
+    const blob = await upload(compressed.name, compressed, {
+      access: "public",
+      handleUploadUrl: "/api/upload/client-token",
+    });
+    return blob.url;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

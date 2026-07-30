@@ -584,25 +584,29 @@ export default function OTDetallePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-zinc-100">
-                      <th className="text-left py-1.5 text-xs font-semibold text-zinc-500 w-full">
-                        Detalle
-                      </th>
-                      <th className="text-right py-1.5 text-xs font-semibold text-zinc-500 pr-4 whitespace-nowrap">
-                        Cantidad
-                      </th>
-                      <th className="text-left py-1.5 text-xs font-semibold text-zinc-500 whitespace-nowrap">
-                        Unidad
-                      </th>
+                      <th className="text-left py-1.5 text-xs font-semibold text-zinc-500 w-full">Detalle</th>
+                      <th className="text-right py-1.5 text-xs font-semibold text-zinc-500 pr-2 whitespace-nowrap">Cant.</th>
+                      <th className="text-left py-1.5 text-xs font-semibold text-zinc-500 whitespace-nowrap">Unidad</th>
+                      <th className="text-right py-1.5 text-xs font-semibold text-zinc-500 whitespace-nowrap">P. unit.</th>
+                      <th className="text-right py-1.5 text-xs font-semibold text-zinc-500 whitespace-nowrap">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {insumos.map((item, i) => (
                       <tr key={i} className="border-b border-zinc-50 last:border-0">
                         <td className="py-1.5 text-zinc-700">{item.detalle || "—"}</td>
-                        <td className="py-1.5 text-zinc-700 text-right pr-4">{item.cantidad}</td>
+                        <td className="py-1.5 text-zinc-700 text-right pr-2">{item.cantidad}</td>
                         <td className="py-1.5 text-zinc-500">{item.unidad}</td>
+                        <td className="py-1.5 text-zinc-700 text-right">{item.precio_unitario ? formatPesos(item.precio_unitario) : "—"}</td>
+                        <td className="py-1.5 text-zinc-700 text-right">{item.precio_unitario ? formatPesos(item.cantidad * item.precio_unitario) : "—"}</td>
                       </tr>
                     ))}
+                    {insumos.some(i => i.precio_unitario) && (
+                      <tr className="border-t border-zinc-200 bg-zinc-50">
+                        <td colSpan={4} className="py-1.5 text-xs font-semibold text-zinc-600 text-right pr-2">Total insumos</td>
+                        <td className="py-1.5 font-bold text-zinc-900 text-right">{formatPesos(insumos.reduce((s, i) => s + i.cantidad * (i.precio_unitario ?? 0), 0))}</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               );

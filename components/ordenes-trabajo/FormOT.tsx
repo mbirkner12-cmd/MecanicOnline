@@ -9,6 +9,7 @@ export interface InsumoItem {
   detalle: string;
   cantidad: number;
   unidad: string;
+  precio_unitario?: number;
 }
 
 export interface FormOTValues {
@@ -258,7 +259,7 @@ export function FormOT({
 
   // ── Insumos helpers ───────────────────────────────────────────────────────
   const addInsumo = () =>
-    setInsumos((prev) => [...prev, { detalle: "", cantidad: 1, unidad: "unid." }]);
+    setInsumos((prev) => [...prev, { detalle: "", cantidad: 1, unidad: "unid.", precio_unitario: 0 }]);
 
   const removeInsumo = (idx: number) =>
     setInsumos((prev) => prev.filter((_, i) => i !== idx));
@@ -272,7 +273,7 @@ export function FormOT({
       const copy = [...prev];
       copy[idx] = {
         ...copy[idx],
-        [field]: field === "cantidad" ? Number(value) : value,
+        [field]: (field === "cantidad" || field === "precio_unitario") ? Number(value) : value,
       };
       return copy;
     });
@@ -641,15 +642,11 @@ export function FormOT({
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-200">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600 w-full">
-                    Detalle
-                  </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600 w-20 whitespace-nowrap">
-                    Cantidad
-                  </th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600 w-24">
-                    Unidad
-                  </th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600 w-full">Detalle</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600 w-20 whitespace-nowrap">Cantidad</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600 w-24">Unidad</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-zinc-600 w-32 whitespace-nowrap">Precio unit.</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-zinc-600 w-32 whitespace-nowrap">Total</th>
                   <th className="px-2 py-2 w-8" />
                 </tr>
               </thead>
@@ -662,9 +659,7 @@ export function FormOT({
                         className={INPUT_CLS}
                         placeholder="Ej: Aceite de motor"
                         value={item.detalle}
-                        onChange={(e) =>
-                          updateInsumo(idx, "detalle", capitalizarPrimera(e.target.value))
-                        }
+                        onChange={(e) => updateInsumo(idx, "detalle", capitalizarPrimera(e.target.value))}
                         spellCheck={true}
                         autoCorrect="on"
                         lang="es"
@@ -686,11 +681,21 @@ export function FormOT({
                         onChange={(e) => updateInsumo(idx, "unidad", e.target.value)}
                       >
                         {UNIDADES.map((u) => (
-                          <option key={u} value={u}>
-                            {u}
-                          </option>
+                          <option key={u} value={u}>{u}</option>
                         ))}
                       </select>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="number"
+                        className={INPUT_CLS + " text-right"}
+                        min={0}
+                        value={item.precio_unitario ?? 0}
+                        onChange={(e) => updateInsumo(idx, "precio_unitario", e.target.value)}
+                      />
+                    </td>
+                    <td className="px-3 py-1.5 text-right text-sm text-zinc-700 whitespace-nowrap">
+                      {formatPesos(item.cantidad * (item.precio_unitario ?? 0))}
                     </td>
                     <td className="px-2 py-1.5">
                       <button
@@ -704,6 +709,15 @@ export function FormOT({
                     </td>
                   </tr>
                 ))}
+                {insumos.length > 0 && (
+                  <tr className="bg-zinc-50 border-t border-zinc-200">
+                    <td colSpan={4} className="px-3 py-2 text-xs font-semibold text-zinc-600 text-right">Total insumos</td>
+                    <td className="px-3 py-2 text-sm font-bold text-zinc-900 text-right whitespace-nowrap">
+                      {formatPesos(insumos.reduce((s, i) => s + i.cantidad * (i.precio_unitario ?? 0), 0))}
+                    </td>
+                    <td />
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

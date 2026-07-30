@@ -194,6 +194,7 @@ export function FormRecepcion({
 
   // Error general
   const [errorMsg, setErrorMsg] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   const debouncedPatente = useDebounce(patente, 400);
   const debouncedRut = useDebounce(rutCliente, 400);
@@ -409,6 +410,7 @@ export function FormRecepcion({
       return;
     }
 
+    setUploading(true);
     try {
       // Subir foto tablero si hay nueva
       let fotoTableroUrl = fotoTableroPreview && !fotoTableroPreview.startsWith("blob:") ? fotoTableroPreview : "";
@@ -467,6 +469,8 @@ export function FormRecepcion({
       });
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Error al guardar la recepción. Intenta de nuevo.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -974,21 +978,30 @@ export function FormRecepcion({
         </div>
       </div>
 
-      {/* Error */}
       {/* Footer */}
       <div className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end"
+        "-mx-4 -mb-4 flex flex-col gap-2 rounded-b-xl border-t bg-muted/50 p-4"
       )}>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={loading}>
-          {loading
-            ? "Guardando..."
-            : mode === "edit"
-            ? "Guardar cambios"
-            : "Crear recepción"}
-        </Button>
+        {errorMsg && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={loading || uploading}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={loading || uploading}>
+            {uploading
+              ? "Subiendo fotos..."
+              : loading
+              ? "Guardando..."
+              : mode === "edit"
+              ? "Guardar cambios"
+              : "Crear recepción"}
+          </Button>
+        </div>
       </div>
     </form>
   );

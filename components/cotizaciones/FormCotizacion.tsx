@@ -700,7 +700,7 @@ export function FormCotizacion({
         {/* ── Con recepción: dropdown + data display ── */}
         {!sinRecepcion && (
           <>
-            {!recepcionId && (
+            {!recepcionId && mode === "create" && (
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-zinc-600">
                   Recepción <span className="text-red-500">*</span>
@@ -712,7 +712,6 @@ export function FormCotizacion({
                     className={SELECT_CLS}
                     value={selectedRecepcionId || ""}
                     onChange={(e) => setSelectedRecepcionId(Number(e.target.value))}
-                    required
                   >
                     <option value="">Seleccionar recepción...</option>
                     {recepcionesDisp.map((r) => (

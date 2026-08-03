@@ -3,7 +3,7 @@ import { jwtVerify } from 'jose';
 
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? 'mecaniconline-secret-key-2024');
 
-const PUBLIC_PATHS = ['/login', '/api/auth/login'];
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/historial', '/api/public/'];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

@@ -17,6 +17,7 @@ import {
   UserCircle,
   LayoutDashboard,
   CalendarDays,
+  QrCode,
 } from 'lucide-react';
 import { useSession } from '@/lib/hooks/useSession';
 
@@ -46,6 +47,7 @@ const configuracionItems: NavItem[] = [
   { label: 'Herramientas', href: '/configuracion/herramientas', icon: Hammer },
   { label: 'Usuarios', href: '/configuracion/usuarios', icon: UserCircle },
   { label: 'General', href: '/configuracion/general', icon: Settings },
+  { label: 'Código QR', href: '/configuracion/qr', icon: QrCode },
 ];
 
 function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {

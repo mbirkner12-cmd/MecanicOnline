@@ -39,11 +39,6 @@ const ESTADO_INFO: Record<string, { label: string; color: string; icon: React.Re
   entregado: { label: "Entregado", color: "text-green-700 bg-green-100", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
 };
 
-function formatFecha(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" });
-}
-
 function normalizePatente(p: string) {
   return p.trim().toUpperCase().replace(/[\s\-]/g, "");
 }
@@ -168,20 +163,6 @@ export default function HistorialPage() {
                   </div>
 
                   <div className="p-4 space-y-4">
-                    {/* Dates */}
-                    <div className="flex gap-6 text-sm">
-                      <div>
-                        <p className="text-xs text-zinc-400 mb-0.5">Ingreso</p>
-                        <p className="text-zinc-700">{formatFecha(t.fecha_ingreso)}</p>
-                      </div>
-                      {t.fecha_entrega && (
-                        <div>
-                          <p className="text-xs text-zinc-400 mb-0.5">Entrega</p>
-                          <p className="text-zinc-700">{formatFecha(t.fecha_entrega)}</p>
-                        </div>
-                      )}
-                    </div>
-
                     {/* Motivo */}
                     {t.motivo_ingreso && (
                       <div>

@@ -99,6 +99,23 @@ function formatFecha(iso: string | null | undefined): string {
   }
 }
 
+function formatDuracion(inicio: string | null | undefined, fin: string | null | undefined): string {
+  if (!inicio) return "—";
+  const start = new Date(inicio);
+  const end = fin ? new Date(fin) : new Date();
+  const diffMs = end.getTime() - start.getTime();
+  if (diffMs < 0) return "—";
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days} día${days !== 1 ? "s" : ""}`);
+  if (hours > 0) parts.push(`${hours} h`);
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes} min`);
+  return (fin ? "" : "~") + parts.join(" ");
+}
+
 function formatPesos(amount: number): string {
   return new Intl.NumberFormat("es-CL", {
     style: "currency",
@@ -488,6 +505,14 @@ export default function OTDetallePage() {
                   <dt className="text-zinc-500">Fin reparación</dt>
                   <dd className="text-zinc-700">{formatFecha(ot.fecha_hora_fin)}</dd>
                 </div>
+                {ot.fecha_hora_inicio && (
+                  <div className="flex justify-between pt-1 border-t border-zinc-100">
+                    <dt className="text-zinc-500 font-medium">Duración</dt>
+                    <dd className="text-zinc-800 font-semibold">
+                      {formatDuracion(ot.fecha_hora_inicio, ot.fecha_hora_fin)}
+                    </dd>
+                  </div>
+                )}
               </dl>
             </CardContent>
           </Card>

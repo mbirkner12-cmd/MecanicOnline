@@ -9,7 +9,7 @@ import {
   cotizaciones,
   recepciones,
 } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 
 interface InsumoItem {
   detalle: string;
@@ -158,12 +158,18 @@ export async function PUT(
       estado?: 'creada' | 'en_reparacion' | 'listo_para_entregar' | 'entregado';
     };
 
-    // No se puede iniciar sin recepción
+    // Si se cambia a en_reparacion y la OT no tiene recepcion, buscar una del mismo vehículo y linkearla
     if (body.estado === 'en_reparacion' && !existing.recepcion_id && !body.recepcion_id) {
-      return NextResponse.json(
-        { error: 'Debe registrar la recepción del vehículo antes de iniciar la OT' },
-        { status: 400 }
-      );
+      const recepcionDelVehiculo = await db
+        .select({ id: recepciones.id })
+        .from(recepciones)
+        .where(eq(recepciones.vehiculo_id, existing.vehiculo_id))
+        .orderBy(desc(recepciones.created_at))
+        .limit(1);
+      if (recepcionDelVehiculo.length > 0) {
+        body.recepcion_id = recepcionDelVehiculo[0].id;
+      }
+      // Si tampoco existe recepción para el vehículo, se deja avanzar igual (el jefe lo decide)
     }
 
     // Build update fields

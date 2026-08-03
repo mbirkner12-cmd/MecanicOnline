@@ -58,25 +58,6 @@ export function CambiarEstadoDialog({
   jefeOnly = true,
   sinRecepcion = false,
 }: CambiarEstadoDialogProps) {
-  // OT programada sin recepción: no se puede iniciar
-  if (sinRecepcion && ot.estado === "creada") {
-    return (
-      <Dialog open={open} onOpenChange={(o) => { if (!loading) onOpenChange(o); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>No se puede iniciar la OT</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-zinc-600 py-2">
-            Esta OT está programada pero aún no tiene recepción registrada. Debes registrar la recepción del vehículo antes de poder iniciarla.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   const map = jefeOnly ? SIGUIENTE_ESTADO_JEFE : SIGUIENTE_ESTADO_COMPLETO;
   const siguienteEstado = map[ot.estado];
 
@@ -90,6 +71,11 @@ export function CambiarEstadoDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-2">
+          {sinRecepcion && ot.estado === "creada" && (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Este vehículo no tiene recepción registrada. Al confirmar, se buscará una recepción existente del vehículo para vincularla automáticamente.
+            </p>
+          )}
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-zinc-600">Estado actual</span>
             <EstadoBadgeOT estado={ot.estado} />

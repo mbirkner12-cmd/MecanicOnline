@@ -344,26 +344,45 @@ export function FormCotizacion({
     }
   }, [recepcionId, selectedRecepcionId, sinRecepcion, fetchRecepcionData]);
 
-  // ── Sin recepción: vehicle lookup by patente ──────────────────────────────
+  // ── Sin recepción: vehicle lookup by patente (local DB + Boostr) ─────────
   useEffect(() => {
     if (!sinRecepcion || !debouncedSrPatente || debouncedSrPatente.length < 4) return;
     setSrBuscandoVehiculo(true);
-    fetch(`/api/vehiculos?patente=${encodeURIComponent(debouncedSrPatente)}`)
+
+    fetch(`/api/patente?patente=${encodeURIComponent(debouncedSrPatente)}`)
       .then((r) => r.json())
-      .then((data: { id: number; marca: string; modelo: string; anio: number; cliente: { id: number; rut: string; nombre: string; telefono: string | null } | null } | null) => {
+      .then((data: {
+        source: "local" | "boostr";
+        patente: string;
+        marca: string;
+        modelo: string;
+        anio: number;
+        vehiculo_id?: number;
+        error?: string;
+      }) => {
         setSrBuscandoVehiculo(false);
-        if (data && data.id) {
-          setSrVehiculoId(data.id);
-          setSrMarca(data.marca);
-          setSrModelo(data.modelo);
-          setSrAnio(String(data.anio));
+        if (data.error) return;
+
+        // Autocompletar marca, modelo, año siempre
+        setSrMarca(data.marca ?? "");
+        setSrModelo(data.modelo ?? "");
+        setSrAnio(data.anio ? String(data.anio) : "");
+
+        if (data.source === "local" && data.vehiculo_id) {
+          // Vehículo ya en la DB: traer datos completos incluyendo cliente
+          setSrVehiculoId(data.vehiculo_id);
           setSrVehiculoReadonly(true);
-          if (data.cliente) {
-            setSrClienteId(data.cliente.id);
-            setSrRutCliente(data.cliente.rut);
-            setSrNombreCliente(data.cliente.nombre);
-            setSrTelefono(data.cliente.telefono ?? "");
-          }
+          fetch(`/api/vehiculos?patente=${encodeURIComponent(debouncedSrPatente)}`)
+            .then((r) => r.json())
+            .then((v: { id: number; marca: string; modelo: string; anio: number; cliente: { id: number; rut: string; nombre: string; telefono: string | null } | null } | null) => {
+              if (v?.cliente) {
+                setSrClienteId(v.cliente.id);
+                setSrRutCliente(v.cliente.rut);
+                setSrNombreCliente(v.cliente.nombre);
+                setSrTelefono(v.cliente.telefono ?? "");
+              }
+            })
+            .catch(() => {});
         }
       })
       .catch(() => setSrBuscandoVehiculo(false));

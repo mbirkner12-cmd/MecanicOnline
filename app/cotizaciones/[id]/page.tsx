@@ -238,11 +238,13 @@ export default function CotizacionDetallePage() {
         }),
       });
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
+        const data = (await res.json() as { error?: string });
         throw new Error(data.error ?? "Error al actualizar");
       }
       setEditOpen(false);
       await fetchCotizacion();
+    } catch (err) {
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -664,11 +666,30 @@ export default function CotizacionDetallePage() {
       </Dialog>
 
       {/* Dialog Editar */}
-      <Dialog open={editOpen} onOpenChange={(open) => setEditOpen(open)}>
+      <Dialog open={editOpen} onOpenChange={(open) => { if (!saving) setEditOpen(open); }}>
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar cotización — {cotizacion.numero}</DialogTitle>
           </DialogHeader>
+          {/* Info vehículo/cliente visible siempre en edit */}
+          {(cotizacion.vehiculo || cotizacion.cliente) && (
+            <div className="grid grid-cols-2 gap-3 bg-zinc-50 rounded-xl p-3 border border-zinc-100 -mt-2">
+              {cotizacion.vehiculo && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-zinc-500">Vehículo</span>
+                  <span className="text-sm font-medium text-zinc-800">
+                    {cotizacion.vehiculo.patente} — {cotizacion.vehiculo.marca} {cotizacion.vehiculo.modelo} {cotizacion.vehiculo.anio}
+                  </span>
+                </div>
+              )}
+              {cotizacion.cliente && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-zinc-500">Cliente</span>
+                  <span className="text-sm font-medium text-zinc-800">{cotizacion.cliente.nombre}</span>
+                </div>
+              )}
+            </div>
+          )}
           <FormCotizacion
             mode="edit"
             recepcionId={cotizacion.recepcion_id ?? undefined}

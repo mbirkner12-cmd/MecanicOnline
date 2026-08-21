@@ -21,7 +21,9 @@ import { CambiarEstadoDialog } from "@/components/ordenes-trabajo/CambiarEstadoD
 import { FormOT, type FormOTValues, type InsumoItem } from "@/components/ordenes-trabajo/FormOT";
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
 import { ObservacionesOT, type ObservacionItem } from "@/components/ordenes-trabajo/ObservacionesOT";
-import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck, FileDown } from "lucide-react";
+import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck, FileDown, TrendingUp } from "lucide-react";
+import { RepuestosInventarioOT } from "@/components/ordenes-trabajo/RepuestosInventarioOT";
+import { ResumenCostosOT } from "@/components/ordenes-trabajo/ResumenCostosOT";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTDetalle {
@@ -37,6 +39,8 @@ interface OTDetalle {
   diagnostico: string | null;
   fecha_hora_inicio: string | null;
   fecha_hora_fin: string | null;
+  horas_trabajadas: number | null;
+  costo_mo_override: number | null;
   estado: EstadoOT;
   created_at: string;
   updated_at: string;
@@ -47,6 +51,7 @@ interface OTDetalle {
     modelo: string;
     anio: number;
     kilometraje_actual: number;
+    modelo_id: number | null;
   } | null;
   cliente: {
     id: number;
@@ -639,36 +644,148 @@ export default function OTDetallePage() {
           </CardContent>
         </Card>
 
-        {/* Resumen cotización */}
-        {ot.cotizacion && (
+        {/* Card Repuestos del inventario — visible desde que la OT está iniciada */}
+        {(ot.estado === 'en_reparacion' || ot.estado === 'listo_para_entregar' || ot.estado === 'entregado') && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">
-                <FileText className="size-4 text-zinc-500" />
-                Resumen cotización ({ot.cotizacion.numero})
+                <Package className="size-4 text-zinc-500" />
+                Repuestos del inventario
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-zinc-500">Mano de obra</dt>
-                  <dd className="text-zinc-700">
-                    {formatPesos(ot.cotizacion.mano_de_obra_monto ?? 0)}
-                  </dd>
+              <RepuestosInventarioOT
+                otId={ot.id}
+                editable={ot.estado === 'en_reparacion'}
+                modeloId={ot.vehiculo?.modelo_id ?? undefined}
+                vehiculo={ot.vehiculo ? { marca: ot.vehiculo.marca, modelo: ot.vehiculo.modelo, anio: ot.vehiculo.anio } : undefined}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Detalle cotización */}
+        {ot.cotizacion && (() => {
+          const cot = ot.cotizacion!;
+          let moItems: { detalle: string; monto: number }[] = [];
+          let repItems: { detalle: string; cantidad: number; unidad: string; valor_unitario: number; monto_total: number }[] = [];
+          try { moItems = JSON.parse(cot.mano_de_obra_detalle ?? "[]"); } catch { /* */ }
+          try { repItems = JSON.parse(cot.repuestos ?? "[]"); } catch { /* */ }
+          const totalNeto = cot.total ?? 0;
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <FileText className="size-4 text-zinc-500" />
+                    Cotización {cot.numero}
+                  </div>
+                  <Link href={`/cotizaciones/${cot.id}`} className="text-xs text-zinc-400 hover:text-zinc-700 font-normal underline">
+                    Ver / editar
+                  </Link>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm">
+                {/* Mano de obra */}
+                {moItems.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Mano de obra</p>
+                    <div className="space-y-1">
+                      {moItems.map((m, i) => (
+                        <div key={i} className="flex justify-between">
+                          <span className="text-zinc-600">{m.detalle}</span>
+                          <span className="font-medium text-zinc-900">{formatPesos(m.monto)}</span>
+                        </div>
+                      ))}
+                      {moItems.length > 1 && (
+                        <div className="flex justify-between text-xs text-zinc-400 border-t border-zinc-100 pt-1">
+                          <span>Subtotal MO</span>
+                          <span>{formatPesos(cot.mano_de_obra_monto)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {moItems.length === 0 && cot.mano_de_obra_monto > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-zinc-600">Mano de obra</span>
+                    <span className="font-medium text-zinc-900">{formatPesos(cot.mano_de_obra_monto)}</span>
+                  </div>
+                )}
+
+                {/* Repuestos */}
+                {repItems.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Repuestos</p>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs text-zinc-400">
+                          <th className="text-left font-normal pb-1">Detalle</th>
+                          <th className="text-right font-normal pb-1">Cant.</th>
+                          <th className="text-right font-normal pb-1">P. unit.</th>
+                          <th className="text-right font-normal pb-1">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {repItems.map((r, i) => (
+                          <tr key={i}>
+                            <td className="py-1 text-zinc-700">{r.detalle}</td>
+                            <td className="py-1 text-right text-zinc-500">{r.cantidad} {r.unidad}</td>
+                            <td className="py-1 text-right text-zinc-500">{formatPesos(r.valor_unitario)}</td>
+                            <td className="py-1 text-right font-medium text-zinc-900">{formatPesos(r.monto_total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Retiro/entrega */}
+                {cot.retiro_entrega_monto > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-zinc-600">Retiro y entrega</span>
+                    <span className="font-medium text-zinc-900">{formatPesos(cot.retiro_entrega_monto)}</span>
+                  </div>
+                )}
+
+                {/* Totales */}
+                <div className="border-t border-zinc-200 pt-3 space-y-1">
+                  <div className="flex justify-between font-semibold text-zinc-900">
+                    <span>Total neto</span>
+                    <span>{formatPesos(totalNeto)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-zinc-400">
+                    <span>IVA 19%</span>
+                    <span>{formatPesos(totalNeto * 0.19)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold text-zinc-900">
+                    <span>Total con IVA</span>
+                    <span>{formatPesos(totalNeto * 1.19)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-zinc-500">Retiro y entrega</dt>
-                  <dd className="text-zinc-700">
-                    {formatPesos(ot.cotizacion.retiro_entrega_monto ?? 0)}
-                  </dd>
-                </div>
-                <div className="flex justify-between border-t border-zinc-100 pt-2">
-                  <dt className="font-semibold text-zinc-900">Total general</dt>
-                  <dd className="font-bold text-zinc-900">
-                    {formatPesos(ot.cotizacion.total ?? 0)}
-                  </dd>
-                </div>
-              </dl>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* Resumen de costos y rentabilidad — visible cuando la OT está terminada */}
+        {(ot.estado === "listo_para_entregar" || ot.estado === "entregado") && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <TrendingUp className="size-4 text-zinc-500" />
+                Rentabilidad de la OT
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResumenCostosOT
+                otId={ot.id}
+                cotizacion={ot.cotizacion}
+                fechaInicio={ot.fecha_hora_inicio}
+                fechaFin={ot.fecha_hora_fin}
+                horasTrabajadas={ot.horas_trabajadas}
+                costoMoOverride={ot.costo_mo_override}
+              />
             </CardContent>
           </Card>
         )}

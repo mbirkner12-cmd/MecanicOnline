@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   CalendarDays,
   QrCode,
+  Package,
 } from 'lucide-react';
 import { useSession } from '@/lib/hooks/useSession';
 
@@ -34,6 +35,7 @@ const operativaItems: NavItem[] = [
   { label: 'Recepción', href: '/recepcion', icon: Car },
   { label: 'Cotizaciones', href: '/cotizaciones', icon: FileText },
   { label: 'Órdenes de trabajo', href: '/ordenes-trabajo', icon: ClipboardList },
+  { label: 'Inventario', href: '/inventario', icon: Package },
 ];
 
 const registrosItems: NavItem[] = [

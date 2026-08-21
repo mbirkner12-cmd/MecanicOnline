@@ -43,6 +43,8 @@ async function getOTById(id: number) {
       fecha_estimada_fin: ordenes_trabajo.fecha_estimada_fin,
       fecha_hora_inicio: ordenes_trabajo.fecha_hora_inicio,
       fecha_hora_fin: ordenes_trabajo.fecha_hora_fin,
+      horas_trabajadas: ordenes_trabajo.horas_trabajadas,
+      costo_mo_override: ordenes_trabajo.costo_mo_override,
       estado: ordenes_trabajo.estado,
       created_at: ordenes_trabajo.created_at,
       updated_at: ordenes_trabajo.updated_at,
@@ -53,6 +55,7 @@ async function getOTById(id: number) {
         modelo: vehiculos.modelo,
         anio: vehiculos.anio,
         kilometraje_actual: vehiculos.kilometraje_actual,
+        modelo_id: vehiculos.modelo_id,
       },
       cliente: {
         id: clientes.id,
@@ -155,6 +158,8 @@ export async function PUT(
       fecha_estimada_fin?: string | null;
       fecha_hora_inicio?: string | null;
       fecha_hora_fin?: string | null;
+      horas_trabajadas?: number | null;
+      costo_mo_override?: number | null;
       estado?: 'creada' | 'en_reparacion' | 'listo_para_entregar' | 'entregado';
     };
 
@@ -208,6 +213,12 @@ export async function PUT(
     }
     if (body.fecha_hora_fin !== undefined) {
       updateFields.fecha_hora_fin = body.fecha_hora_fin;
+    }
+    if (body.horas_trabajadas !== undefined) {
+      updateFields.horas_trabajadas = body.horas_trabajadas;
+    }
+    if (body.costo_mo_override !== undefined) {
+      updateFields.costo_mo_override = body.costo_mo_override;
     }
     if (body.estado !== undefined) {
       updateFields.estado = body.estado;

@@ -21,6 +21,7 @@ export const vehiculos = sqliteTable('vehiculos', {
   vin: text('vin'),
   kilometraje_actual: integer('kilometraje_actual').notNull(),
   cliente_id: integer('cliente_id').notNull().references(() => clientes.id),
+  modelo_id: integer('modelo_id'),
   revision_tecnica_url: text('revision_tecnica_url'),
   revision_tecnica_vencimiento: text('revision_tecnica_vencimiento'),
   permiso_circulacion_url: text('permiso_circulacion_url'),
@@ -141,6 +142,8 @@ export const ordenes_trabajo = sqliteTable('ordenes_trabajo', {
   fecha_estimada_fin: text('fecha_estimada_fin'),
   fecha_hora_inicio: text('fecha_hora_inicio'),
   fecha_hora_fin: text('fecha_hora_fin'),
+  horas_trabajadas: real('horas_trabajadas'),
+  costo_mo_override: real('costo_mo_override'),
   tareas_completadas: text('tareas_completadas').default('[]').notNull(),
   observaciones: text('observaciones').default('[]').notNull(),
   estado: text('estado', {
@@ -148,6 +151,59 @@ export const ordenes_trabajo = sqliteTable('ordenes_trabajo', {
   }).notNull().default('creada'),
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
   updated_at: text('updated_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const modelos_vehiculo = sqliteTable('modelos_vehiculo', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  marca: text('marca').notNull(),
+  modelo: text('modelo').notNull(),
+  anio: integer('anio').notNull(),
+  motor: text('motor'),
+  created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const repuestos = sqliteTable('repuestos', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  sku: text('sku').notNull().unique(),
+  nombre: text('nombre').notNull(),
+  descripcion: text('descripcion'),
+  precio_costo: real('precio_costo').notNull().default(0),
+  precio_venta: real('precio_venta').notNull().default(0),
+  stock_actual: integer('stock_actual').notNull().default(0),
+  stock_minimo: integer('stock_minimo').notNull().default(1),
+  unidad: text('unidad').notNull().default('unidad'),
+  created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
+  updated_at: text('updated_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const repuesto_modelo = sqliteTable('repuesto_modelo', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  repuesto_id: integer('repuesto_id').notNull().references(() => repuestos.id),
+  modelo_id: integer('modelo_id').notNull().references(() => modelos_vehiculo.id),
+});
+
+export const ot_repuestos = sqliteTable('ot_repuestos', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  ot_id: integer('ot_id').notNull().references(() => ordenes_trabajo.id),
+  repuesto_id: integer('repuesto_id').notNull().references(() => repuestos.id),
+  cantidad: integer('cantidad').notNull(),
+  precio_costo_snapshot: real('precio_costo_snapshot').notNull(),
+  precio_venta_snapshot: real('precio_venta_snapshot').notNull(),
+  created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
+export const facturas_compra = sqliteTable('facturas_compra', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  numero: text('numero').notNull(),
+  proveedor_nombre: text('proveedor_nombre').notNull(),
+  proveedor_rut: text('proveedor_rut'),
+  fecha_emision: text('fecha_emision').notNull(),
+  total_neto: real('total_neto').notNull().default(0),
+  total_iva: real('total_iva').notNull().default(0),
+  total: real('total').notNull().default(0),
+  pdf_url: text('pdf_url'),
+  items: text('items').notNull().default('[]'),
+  created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
 export const eventos_calendario = sqliteTable('eventos_calendario', {

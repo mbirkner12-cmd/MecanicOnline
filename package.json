@@ -13,6 +13,7 @@
     "db:setup": "npm run db:generate && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
     "@base-ui/react": "^1.6.0",
     "@libsql/client": "^0.17.4",
     "@react-pdf/renderer": "^4.5.1",

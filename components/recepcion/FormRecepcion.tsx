@@ -234,20 +234,46 @@ export function FormRecepcion({
       .catch(() => {});
   }, []);
 
-  // Búsqueda de vehículo por patente
+  // Búsqueda de vehículo por patente (local + Boostr)
   useEffect(() => {
     if (!debouncedPatente || debouncedPatente.length < 4 || mode === "edit") return;
     setVehiculoBuscando(true);
     setVehiculoDecision(null);
     setVehiculoEncontrado(null);
 
-    fetch(`/api/vehiculos?patente=${encodeURIComponent(debouncedPatente)}`)
+    fetch(`/api/patente?patente=${encodeURIComponent(debouncedPatente)}`)
       .then((r) => r.json())
-      .then((data: VehiculoData | null) => {
+      .then((data: {
+        source: "local" | "boostr";
+        patente: string;
+        marca: string;
+        modelo: string;
+        anio: number;
+        motor?: string | null;
+        combustible?: string | null;
+        kilometros?: number | null;
+        vehiculo_id?: number;
+        error?: string;
+      }) => {
         setVehiculoBuscando(false);
-        if (data && data.id) {
-          setVehiculoEncontrado(data);
-          setVehiculoDecision("pending");
+        if (data.error) return;
+
+        if (data.source === "local" && data.vehiculo_id) {
+          // Vehículo ya registrado — mostrar card de confirmación
+          fetch(`/api/vehiculos?patente=${encodeURIComponent(debouncedPatente)}`)
+            .then((r) => r.json())
+            .then((v: VehiculoData | null) => {
+              if (v && v.id) {
+                setVehiculoEncontrado(v);
+                setVehiculoDecision("pending");
+              }
+            })
+            .catch(() => {});
+        } else if (data.source === "boostr") {
+          // Vehículo nuevo — autocompletar campos desde Boostr
+          setMarca(data.marca ?? "");
+          setModelo(data.modelo ?? "");
+          setAnio(data.anio ? String(data.anio) : "");
         }
       })
       .catch(() => setVehiculoBuscando(false));
@@ -387,7 +413,9 @@ export function FormRecepcion({
 
   const uploadFile = async (file: File): Promise<string> => {
     const compressed = await compressImage(file);
-    const blob = await upload(compressed.name, compressed, {
+    const ext = compressed.name.split(".").pop() ?? "jpg";
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const blob = await upload(uniqueName, compressed, {
       access: "public",
       handleUploadUrl: "/api/upload/client-token",
     });
@@ -402,8 +430,8 @@ export function FormRecepcion({
       setErrorMsg("Completa los datos del vehículo (patente, marca, modelo, año, km).");
       return;
     }
-    if (!rutCliente.trim() || !nombreCliente.trim()) {
-      setErrorMsg("RUT y nombre del cliente son obligatorios.");
+    if (!nombreCliente.trim()) {
+      setErrorMsg("El nombre del cliente es obligatorio.");
       return;
     }
 
@@ -876,7 +904,7 @@ export function FormRecepcion({
         </h3>
 
         <div className="grid gap-1.5">
-          <Label htmlFor="rut_cliente">RUT</Label>
+          <Label htmlFor="rut_cliente">RUT <span className="text-zinc-400 text-xs font-normal">(opcional)</span></Label>
           <div className="relative">
             <Input
               id="rut_cliente"

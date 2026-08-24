@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Package, Plus, Search, Upload, AlertTriangle,
   ChevronRight, X, Check, Loader2, FileText, Info,
@@ -79,33 +79,69 @@ function SelectorModelos({
   selected: number[];
   onChange: (ids: number[]) => void;
 }) {
+  const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   function toggle(id: number) {
     if (selected.includes(id)) onChange(selected.filter(s => s !== id));
     else onChange([...selected, id]);
   }
 
-  const labels = modelos
-    .filter(m => selected.includes(m.id))
-    .map(m => `${m.marca} ${m.modelo} ${m.anio}`)
-    .join(", ");
+  const q = query.trim().toLowerCase();
+  const filtrados = q
+    ? modelos.filter(m =>
+        `${m.marca} ${m.modelo} ${m.anio}`.toLowerCase().includes(q)
+      )
+    : modelos;
+
+  const selectedModelos = modelos.filter(m => selected.includes(m.id));
+
+  // Cierra el dropdown al hacer click fuera
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className="w-full text-left border border-zinc-200 rounded px-2 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-400 bg-white"
-      >
-        {labels || <span className="text-zinc-400">Sin modelo asignado (repuesto genérico)</span>}
-      </button>
+    <div className="relative" ref={containerRef}>
+      {/* Input de búsqueda */}
+      <input
+        type="text"
+        placeholder="Buscar marca, modelo o año..."
+        value={query}
+        onFocus={() => setOpen(true)}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        className="w-full border border-zinc-200 rounded px-2 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-400 bg-white placeholder:text-zinc-400"
+      />
+
+      {/* Tags de seleccionados */}
+      {selectedModelos.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {selectedModelos.map(m => (
+            <span key={m.id} className="inline-flex items-center gap-1 bg-zinc-100 text-zinc-700 text-xs px-2 py-0.5 rounded-full">
+              {m.marca} {m.modelo} {m.anio}
+              <button type="button" onClick={() => toggle(m.id)} className="text-zinc-400 hover:text-zinc-700 leading-none">✕</button>
+            </span>
+          ))}
+        </div>
+      )}
+      {selectedModelos.length === 0 && !open && (
+        <p className="text-xs text-zinc-400 mt-1">Sin modelo asignado (genérico para todos)</p>
+      )}
+
+      {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-zinc-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-          {modelos.length === 0 ? (
-            <p className="text-xs text-zinc-400 p-3">No hay modelos registrados</p>
+        <div className="absolute z-50 mt-1 w-full bg-white border border-zinc-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+          {filtrados.length === 0 ? (
+            <p className="text-xs text-zinc-400 p-3">Sin resultados para &quot;{query}&quot;</p>
           ) : (
-            modelos.map(m => (
+            filtrados.map(m => (
               <label key={m.id} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-50 cursor-pointer text-xs">
                 <input
                   type="checkbox"
@@ -113,15 +149,12 @@ function SelectorModelos({
                   onChange={() => toggle(m.id)}
                   className="rounded"
                 />
-                <span>{m.marca} {m.modelo} {m.anio}</span>
+                <span className={selected.includes(m.id) ? 'font-medium text-zinc-900' : 'text-zinc-700'}>
+                  {m.marca} {m.modelo} {m.anio}
+                </span>
               </label>
             ))
           )}
-          <div className="border-t border-zinc-100 px-3 py-2">
-            <button type="button" onClick={() => setOpen(false)} className="text-xs text-zinc-500 hover:text-zinc-700">
-              Cerrar
-            </button>
-          </div>
         </div>
       )}
     </div>

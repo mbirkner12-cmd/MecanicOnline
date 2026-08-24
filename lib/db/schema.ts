@@ -149,6 +149,8 @@ export const ordenes_trabajo = sqliteTable('ordenes_trabajo', {
   estado: text('estado', {
     enum: ['creada', 'en_reparacion', 'listo_para_entregar', 'entregado'],
   }).notNull().default('creada'),
+  metodo_pago: text('metodo_pago'),
+  pagado: integer('pagado', { mode: 'boolean' }).default(false).notNull(),
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
   updated_at: text('updated_at').default(sql`(datetime('now'))`).notNull(),
 });

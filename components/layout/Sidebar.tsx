@@ -19,6 +19,7 @@ import {
   CalendarDays,
   QrCode,
   Package,
+  DollarSign,
 } from 'lucide-react';
 import { useSession } from '@/lib/hooks/useSession';
 
@@ -35,6 +36,7 @@ const jefeOperativaItems: NavItem[] = [
   { label: 'Recepción', href: '/recepcion', icon: Car },
   { label: 'Cotizaciones', href: '/cotizaciones', icon: FileText },
   { label: 'Órdenes de trabajo', href: '/ordenes-trabajo', icon: ClipboardList },
+  { label: 'Cobros', href: '/cobros', icon: DollarSign },
   { label: 'Inventario', href: '/inventario', icon: Package },
 ];
 

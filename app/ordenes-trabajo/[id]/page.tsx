@@ -21,7 +21,7 @@ import { CambiarEstadoDialog } from "@/components/ordenes-trabajo/CambiarEstadoD
 import { FormOT, type FormOTValues, type InsumoItem } from "@/components/ordenes-trabajo/FormOT";
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
 import { ObservacionesOT, type ObservacionItem } from "@/components/ordenes-trabajo/ObservacionesOT";
-import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck, FileDown, TrendingUp } from "lucide-react";
+import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck, FileDown, TrendingUp, DollarSign, CheckCircle2 } from "lucide-react";
 import { RepuestosInventarioOT } from "@/components/ordenes-trabajo/RepuestosInventarioOT";
 import { ResumenCostosOT } from "@/components/ordenes-trabajo/ResumenCostosOT";
 
@@ -41,6 +41,8 @@ interface OTDetalle {
   fecha_hora_fin: string | null;
   horas_trabajadas: number | null;
   costo_mo_override: number | null;
+  metodo_pago: string | null;
+  pagado: boolean;
   estado: EstadoOT;
   created_at: string;
   updated_at: string;
@@ -160,6 +162,9 @@ export default function OTDetallePage() {
   // Registrar recepción
   const [recepcionDialogOpen, setRecepcionDialogOpen] = useState(false);
   const [recepcionLoading, setRecepcionLoading] = useState(false);
+
+  // Pago
+  const [savingPago, setSavingPago] = useState(false);
 
   const fetchOT = async () => {
     setLoading(true);
@@ -289,6 +294,23 @@ export default function OTDetallePage() {
       await fetchOT();
     } finally {
       setRecepcionLoading(false);
+    }
+  };
+
+  // ── Actualizar pago ──────────────────────────────────────────────────────
+  const handleActualizarPago = async (campos: { pagado?: boolean; metodo_pago?: string | null }) => {
+    if (!ot) return;
+    setSavingPago(true);
+    try {
+      const res = await fetch(`/api/ordenes-trabajo/${ot.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campos),
+      });
+      if (!res.ok) throw new Error();
+      setOT(prev => prev ? { ...prev, ...campos } : prev);
+    } finally {
+      setSavingPago(false);
     }
   };
 
@@ -786,6 +808,68 @@ export default function OTDetallePage() {
                 horasTrabajadas={ot.horas_trabajadas}
                 costoMoOverride={ot.costo_mo_override}
               />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Cobro */}
+        {(ot.estado === 'listo_para_entregar' || ot.estado === 'entregado') && (
+          <Card className={ot.pagado ? 'border-green-200' : 'border-amber-200'}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <DollarSign className="size-4 text-zinc-500" />
+                Cobro
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                {/* Total a cobrar */}
+                <div className="flex-1">
+                  <p className="text-xs text-zinc-500 mb-1">Total a cobrar (con IVA)</p>
+                  <p className="text-2xl font-bold text-zinc-900">
+                    {ot.cotizacion
+                      ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(ot.cotizacion.total * 1.19)
+                      : '—'}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Neto: {ot.cotizacion ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(ot.cotizacion.total) : '—'}
+                  </p>
+                </div>
+
+                {/* Método de pago */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-zinc-500 font-medium">Método de pago</label>
+                  <select
+                    value={ot.metodo_pago ?? ''}
+                    disabled={savingPago}
+                    onChange={e => handleActualizarPago({ metodo_pago: e.target.value || null })}
+                    className="border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:opacity-50 w-44"
+                  >
+                    <option value="">Sin especificar</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="debito">Débito</option>
+                    <option value="credito">Crédito</option>
+                  </select>
+                </div>
+
+                {/* Pagado toggle */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-zinc-500 font-medium">Estado de pago</label>
+                  <button
+                    disabled={savingPago}
+                    onClick={() => handleActualizarPago({ pagado: !ot.pagado })}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+                      ot.pagado
+                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                        : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                    }`}
+                  >
+                    <CheckCircle2 className={`size-4 ${ot.pagado ? 'text-green-600' : 'text-amber-400'}`} />
+                    {ot.pagado ? 'Pagado' : 'Pendiente de pago'}
+                  </button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

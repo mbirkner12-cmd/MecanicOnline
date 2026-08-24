@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Users, Pencil } from "lucide-react";
+import { Users, Pencil, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatRut, formatPhone } from "@/lib/format";
 import {
@@ -31,6 +31,15 @@ interface ClienteForm {
   direccion: string;
 }
 
+interface VehiculoRow {
+  id: number;
+  patente: string;
+  marca: string;
+  modelo: string;
+  anio: number;
+  kilometraje_actual: number;
+}
+
 function formatFecha(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("es-CL", {
@@ -48,6 +57,8 @@ export default function ClientesPage() {
   const [form, setForm] = useState<ClienteForm>({ nombre: "", rut: "", telefono: "", direccion: "" });
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [vehiculosCliente, setVehiculosCliente] = useState<{ cliente: ClienteRow; lista: VehiculoRow[] } | null>(null);
+  const [loadingVehiculos, setLoadingVehiculos] = useState(false);
 
   const fetchClientes = useCallback(async () => {
     setLoading(true);
@@ -64,6 +75,19 @@ export default function ClientesPage() {
   useEffect(() => {
     fetchClientes();
   }, [fetchClientes]);
+
+  async function openVehiculos(c: ClienteRow, e: React.MouseEvent) {
+    e.stopPropagation();
+    setLoadingVehiculos(true);
+    setVehiculosCliente({ cliente: c, lista: [] });
+    try {
+      const res = await fetch(`/api/vehiculos?cliente_id=${c.id}`);
+      const data = await res.json() as VehiculoRow[];
+      setVehiculosCliente({ cliente: c, lista: data });
+    } finally {
+      setLoadingVehiculos(false);
+    }
+  }
 
   function openEdit(c: ClienteRow, e: React.MouseEvent) {
     e.stopPropagation();
@@ -179,9 +203,14 @@ export default function ClientesPage() {
                   <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{c.telefono ?? "—"}</td>
                   <td className="px-4 py-3 text-zinc-600 hidden md:table-cell">{c.correo ?? "—"}</td>
                   <td className="px-4 py-3 text-center hidden md:table-cell">
-                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
+                    <button
+                      onClick={(e) => openVehiculos(c, e)}
+                      disabled={c.num_vehiculos === 0}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition-colors disabled:opacity-40 disabled:cursor-default"
+                      title={c.num_vehiculos > 0 ? "Ver vehículos" : undefined}
+                    >
                       {c.num_vehiculos}
-                    </span>
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-zinc-100 text-zinc-700 text-xs font-semibold">
@@ -204,6 +233,48 @@ export default function ClientesPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Dialog: vehículos del cliente */}
+      <Dialog open={!!vehiculosCliente} onOpenChange={(open) => { if (!open) setVehiculosCliente(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Car className="h-4 w-4 text-zinc-500" />
+              Vehículos de {vehiculosCliente?.cliente.nombre}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingVehiculos ? (
+            <div className="space-y-2 mt-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="h-12 bg-zinc-100 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : vehiculosCliente?.lista.length === 0 ? (
+            <p className="text-sm text-zinc-400 italic mt-2">Sin vehículos registrados.</p>
+          ) : (
+            <div className="mt-2 rounded-lg border border-zinc-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-zinc-50 border-b border-zinc-200">
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-500">Patente</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-500">Vehículo</th>
+                    <th className="text-right px-3 py-2 text-xs font-semibold text-zinc-500">Km</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vehiculosCliente?.lista.map((v) => (
+                    <tr key={v.id} className="border-b border-zinc-100 last:border-0">
+                      <td className="px-3 py-2.5 font-mono font-semibold text-zinc-900">{v.patente}</td>
+                      <td className="px-3 py-2.5 text-zinc-700">{v.marca} {v.modelo} <span className="text-zinc-400">{v.anio}</span></td>
+                      <td className="px-3 py-2.5 text-right text-zinc-500 text-xs">{v.kilometraje_actual?.toLocaleString("es-CL")} km</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editando} onOpenChange={(open) => { if (!open) setEditando(null); }}>
         <DialogContent className="max-w-md">

@@ -7,9 +7,10 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const patente = searchParams.get('patente');
+    const clienteIdParam = searchParams.get('cliente_id');
 
     if (!patente) {
-      const result = await db
+      let query = db
         .select({
           id: vehiculos.id,
           patente: vehiculos.patente,
@@ -28,6 +29,13 @@ export async function GET(request: Request) {
         .from(vehiculos)
         .leftJoin(clientes, eq(vehiculos.cliente_id, clientes.id))
         .leftJoin(recepciones, eq(recepciones.vehiculo_id, vehiculos.id))
+        .$dynamic();
+
+      if (clienteIdParam) {
+        query = query.where(eq(vehiculos.cliente_id, Number(clienteIdParam)));
+      }
+
+      const result = await query
         .groupBy(vehiculos.id)
         .orderBy(desc(sql`MAX(${recepciones.fecha_hora_ingreso})`));
       return NextResponse.json(result);

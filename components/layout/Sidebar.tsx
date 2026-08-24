@@ -29,13 +29,18 @@ type NavItem = {
   disabled?: boolean;
 };
 
-const operativaItems: NavItem[] = [
+const jefeOperativaItems: NavItem[] = [
   { label: 'Panel', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Calendario', href: '/calendario', icon: CalendarDays },
   { label: 'Recepción', href: '/recepcion', icon: Car },
   { label: 'Cotizaciones', href: '/cotizaciones', icon: FileText },
   { label: 'Órdenes de trabajo', href: '/ordenes-trabajo', icon: ClipboardList },
   { label: 'Inventario', href: '/inventario', icon: Package },
+];
+
+const mecanicoItems: NavItem[] = [
+  { label: 'Mis OTs', href: '/mecanico/ordenes-trabajo', icon: ClipboardList },
+  { label: 'Recepción', href: '/recepcion', icon: Car },
 ];
 
 const registrosItems: NavItem[] = [
@@ -123,38 +128,53 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
-        <div>
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-3">
-            Operativa
-          </p>
-          <div className="space-y-1">
-            {operativaItems.map((item) => (
-              <NavLink key={item.href} item={item} onNavigate={onClose} />
-            ))}
+        {session?.rol === 'mecanico' ? (
+          <div>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-3">
+              Mi trabajo
+            </p>
+            <div className="space-y-1">
+              {mecanicoItems.map((item) => (
+                <NavLink key={item.href} item={item} onNavigate={onClose} />
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div>
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-3">
+                Operativa
+              </p>
+              <div className="space-y-1">
+                {jefeOperativaItems.map((item) => (
+                  <NavLink key={item.href} item={item} onNavigate={onClose} />
+                ))}
+              </div>
+            </div>
 
-        <div>
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-3">
-            Registros
-          </p>
-          <div className="space-y-1">
-            {registrosItems.map((item) => (
-              <NavLink key={item.href} item={item} onNavigate={onClose} />
-            ))}
-          </div>
-        </div>
+            <div>
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-3">
+                Registros
+              </p>
+              <div className="space-y-1">
+                {registrosItems.map((item) => (
+                  <NavLink key={item.href} item={item} onNavigate={onClose} />
+                ))}
+              </div>
+            </div>
 
-        <div>
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-3">
-            Configuración
-          </p>
-          <div className="space-y-1">
-            {configuracionItems.map((item) => (
-              <NavLink key={item.href} item={item} onNavigate={onClose} />
-            ))}
-          </div>
-        </div>
+            <div>
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 px-3">
+                Configuración
+              </p>
+              <div className="space-y-1">
+                {configuracionItems.map((item) => (
+                  <NavLink key={item.href} item={item} onNavigate={onClose} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </nav>
 
       <div className="p-4 border-t border-zinc-200">

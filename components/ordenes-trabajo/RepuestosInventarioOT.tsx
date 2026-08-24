@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Search, AlertTriangle, Loader2 } from "lucide-react";
+import { useSession } from "@/lib/hooks/useSession";
 
 interface OTRepuesto {
   id: number;
@@ -116,6 +117,9 @@ export function RepuestosInventarioOT({ otId, editable = true, modeloId, vehicul
     loadItems();
   }
 
+  const { session } = useSession();
+  const esMecanico = session?.rol === 'mecanico';
+
   const totalVenta = items.reduce((s, i) => s + i.cantidad * i.precio_venta_snapshot, 0);
 
   // Excluir del catálogo los repuestos ya agregados a la OT
@@ -145,7 +149,7 @@ export function RepuestosInventarioOT({ otId, editable = true, modeloId, vehicul
                 <p className="text-sm font-medium text-zinc-900 truncate">{repuestoSel.nombre}</p>
                 <p className="text-xs text-zinc-500">
                   Stock disponible: <span className={repuestoSel.stock_actual <= 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>{repuestoSel.stock_actual} {repuestoSel.unidad}</span>
-                  {" · "}Precio venta: {formatCLP(repuestoSel.precio_venta)}
+                  {!esMecanico && <>{" · "}Precio venta: {formatCLP(repuestoSel.precio_venta)}</>}
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -203,7 +207,7 @@ export function RepuestosInventarioOT({ otId, editable = true, modeloId, vehicul
                         {r.stock_actual <= 0 && <AlertTriangle className="h-3 w-3 inline mr-1" />}
                         Stock: {r.stock_actual} {r.unidad}
                       </span>
-                      <span className="text-xs text-zinc-500">{formatCLP(r.precio_venta)}</span>
+                      {!esMecanico && <span className="text-xs text-zinc-500">{formatCLP(r.precio_venta)}</span>}
                     </div>
                   </button>
                 ))}
@@ -232,8 +236,8 @@ export function RepuestosInventarioOT({ otId, editable = true, modeloId, vehicul
               <tr className="bg-zinc-50 border-b border-zinc-200">
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-500">Repuesto</th>
                 <th className="text-right px-3 py-2 text-xs font-semibold text-zinc-500">Cant.</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-zinc-500">P. venta</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-zinc-500">Total</th>
+                {!esMecanico && <th className="text-right px-3 py-2 text-xs font-semibold text-zinc-500">P. venta</th>}
+                {!esMecanico && <th className="text-right px-3 py-2 text-xs font-semibold text-zinc-500">Total</th>}
                 {editable && <th className="px-2 py-2 w-8" />}
               </tr>
             </thead>
@@ -245,8 +249,8 @@ export function RepuestosInventarioOT({ otId, editable = true, modeloId, vehicul
                     <p className="text-xs text-zinc-400">{item.sku}</p>
                   </td>
                   <td className="px-3 py-2 text-right text-zinc-700">{item.cantidad} {item.unidad}</td>
-                  <td className="px-3 py-2 text-right text-zinc-700">{formatCLP(item.precio_venta_snapshot)}</td>
-                  <td className="px-3 py-2 text-right font-medium text-zinc-900">{formatCLP(item.cantidad * item.precio_venta_snapshot)}</td>
+                  {!esMecanico && <td className="px-3 py-2 text-right text-zinc-700">{formatCLP(item.precio_venta_snapshot)}</td>}
+                  {!esMecanico && <td className="px-3 py-2 text-right font-medium text-zinc-900">{formatCLP(item.cantidad * item.precio_venta_snapshot)}</td>}
                   {editable && (
                     <td className="px-2 py-2 text-right">
                       <button
@@ -263,11 +267,13 @@ export function RepuestosInventarioOT({ otId, editable = true, modeloId, vehicul
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-zinc-200 bg-zinc-50">
-                <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-zinc-500 text-right">Total repuestos</td>
-                <td className="px-3 py-2 text-right font-bold text-zinc-900">{formatCLP(totalVenta)}</td>
-                {editable && <td />}
-              </tr>
+              {!esMecanico && (
+                <tr className="border-t border-zinc-200 bg-zinc-50">
+                  <td colSpan={3} className="px-3 py-2 text-xs font-semibold text-zinc-500 text-right">Total repuestos</td>
+                  <td className="px-3 py-2 text-right font-bold text-zinc-900">{formatCLP(totalVenta)}</td>
+                  {editable && <td />}
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>

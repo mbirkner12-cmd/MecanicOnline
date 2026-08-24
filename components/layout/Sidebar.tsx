@@ -20,6 +20,7 @@ import {
   QrCode,
   Package,
   DollarSign,
+  TrendingUp,
 } from 'lucide-react';
 import { useSession } from '@/lib/hooks/useSession';
 
@@ -37,6 +38,7 @@ const jefeOperativaItems: NavItem[] = [
   { label: 'Cotizaciones', href: '/cotizaciones', icon: FileText },
   { label: 'Órdenes de trabajo', href: '/ordenes-trabajo', icon: ClipboardList },
   { label: 'Cobros', href: '/cobros', icon: DollarSign },
+  { label: 'Rentabilidad', href: '/rentabilidad', icon: TrendingUp },
   { label: 'Inventario', href: '/inventario', icon: Package },
 ];
 

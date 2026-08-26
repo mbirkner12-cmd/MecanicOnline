@@ -197,6 +197,13 @@ export default function MecanicoOTDetallePage() {
         body: JSON.stringify({ ...values, ot_id: ot.id }),
       });
       if (!res.ok) throw new Error('Error al registrar recepción');
+      const recepcion = await res.json() as { id: number };
+      // Iniciar la OT automáticamente tras registrar la recepción
+      await fetch(`/api/ordenes-trabajo/${ot.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'en_reparacion', recepcion_id: recepcion.id }),
+      });
       setRecepcionDialogOpen(false);
       await fetchOT();
     } finally {
@@ -284,24 +291,19 @@ export default function MecanicoOTDetallePage() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
-          {ot.estado === 'creada' && ot.recepcion_id === null && (
-            <div className="flex flex-col items-end gap-1">
-              <Button
-                onClick={() => setRecepcionDialogOpen(true)}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-2"
-              >
-                <ClipboardCheck className="size-4" />
-                Registrar ingreso
-              </Button>
-              <p className="text-xs text-zinc-400">Debes registrar el ingreso antes de iniciar</p>
-            </div>
-          )}
-          {canIniciar && (
+          {ot.estado === 'creada' && (
             <Button
-              onClick={() => handleCambiarEstado('en_reparacion')}
+              onClick={() => {
+                if (ot.recepcion_id === null) {
+                  setRecepcionDialogOpen(true);
+                } else {
+                  handleCambiarEstado('en_reparacion');
+                }
+              }}
               disabled={accionLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
             >
+              <ClipboardCheck className="size-4" />
               {accionLoading ? 'Procesando...' : 'Iniciar reparación'}
             </Button>
           )}

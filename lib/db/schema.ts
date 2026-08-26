@@ -194,6 +194,16 @@ export const ot_repuestos = sqliteTable('ot_repuestos', {
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+export const ot_gastos = sqliteTable('ot_gastos', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  ot_id: integer('ot_id').notNull().references(() => ordenes_trabajo.id),
+  descripcion: text('descripcion').notNull(),
+  monto: real('monto').notNull().default(0),
+  foto_boleta_url: text('foto_boleta_url'),
+  cobrar_cliente: integer('cobrar_cliente', { mode: 'boolean' }).default(false).notNull(),
+  created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 export const facturas_compra = sqliteTable('facturas_compra', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   numero: text('numero').notNull(),

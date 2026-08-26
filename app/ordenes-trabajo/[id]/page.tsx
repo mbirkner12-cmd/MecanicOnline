@@ -21,9 +21,10 @@ import { CambiarEstadoDialog } from "@/components/ordenes-trabajo/CambiarEstadoD
 import { FormOT, type FormOTValues, type InsumoItem } from "@/components/ordenes-trabajo/FormOT";
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
 import { ObservacionesOT, type ObservacionItem } from "@/components/ordenes-trabajo/ObservacionesOT";
-import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck, FileDown, TrendingUp, DollarSign, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, ClipboardCheck, FileDown, TrendingUp, DollarSign, CheckCircle2, Receipt } from "lucide-react";
 import { RepuestosInventarioOT } from "@/components/ordenes-trabajo/RepuestosInventarioOT";
 import { ResumenCostosOT } from "@/components/ordenes-trabajo/ResumenCostosOT";
+import { GastosOT } from "@/components/ordenes-trabajo/GastosOT";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTDetalle {
@@ -681,6 +682,25 @@ export default function OTDetallePage() {
                 editable={ot.estado === 'en_reparacion'}
                 modeloId={ot.vehiculo?.modelo_id ?? undefined}
                 vehiculo={ot.vehiculo ? { marca: ot.vehiculo.marca, modelo: ot.vehiculo.modelo, anio: ot.vehiculo.anio } : undefined}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Implementos y gastos del mecánico */}
+        {(ot.estado === 'en_reparacion' || ot.estado === 'listo_para_entregar' || ot.estado === 'entregado') && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Receipt className="size-4 text-zinc-500" />
+                Implementos y gastos del mecánico
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <GastosOT
+                otId={ot.id}
+                editable={false}
+                jefeView={true}
               />
             </CardContent>
           </Card>

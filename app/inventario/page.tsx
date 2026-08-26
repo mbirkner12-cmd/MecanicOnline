@@ -361,7 +361,7 @@ function ModalFactura({ onClose, onConfirm }: { onClose: () => void; onConfirm: 
                         />
                       </label>
                       <label className="flex flex-col gap-1">
-                        <span className="text-xs text-zinc-400">Precio unitario (neto)</span>
+                        <span className="text-xs text-zinc-400">Precio unitario (c/IVA)</span>
                         <input
                           type="number" min="0"
                           className="border border-zinc-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-zinc-400"
@@ -557,11 +557,11 @@ function ModalRepuesto({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">Precio costo (neto)</label>
+              <label className="text-xs text-zinc-500 mb-1 block">Precio costo (c/IVA)</label>
               <input type="number" min="0" className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900" value={form.precio_costo} onChange={e => setForm(f => ({ ...f, precio_costo: parseInt(e.target.value) || 0 }))} />
             </div>
             <div>
-              <label className="text-xs text-zinc-500 mb-1 block">Precio venta (neto)</label>
+              <label className="text-xs text-zinc-500 mb-1 block">Precio venta (c/IVA)</label>
               <input type="number" min="0" className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900" value={form.precio_venta} onChange={e => setForm(f => ({ ...f, precio_venta: parseInt(e.target.value) || 0 }))} />
               {form.precio_costo > 0 && form.precio_venta > 0 && (() => {
                 const ganancia = form.precio_venta - form.precio_costo;
@@ -709,8 +709,8 @@ export default function InventarioPage() {
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wider">SKU</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wider">Nombre</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wider">Costo</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wider">Venta</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wider">Costo (c/IVA)</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wider">Venta (c/IVA)</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-400 uppercase tracking-wider">Stock</th>
                 <th className="px-4 py-3"></th>
               </tr>

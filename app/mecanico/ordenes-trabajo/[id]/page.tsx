@@ -118,6 +118,10 @@ export default function MecanicoOTDetallePage() {
   const [recepcionDialogOpen, setRecepcionDialogOpen] = useState(false);
   const [recepcionLoading, setRecepcionLoading] = useState(false);
 
+  // Dialog costo MO al terminar
+  const [terminarDialogOpen, setTerminarDialogOpen] = useState(false);
+  const [costoMOInput, setCostoMOInput] = useState('');
+
   const fetchOT = async () => {
     setLoading(true);
     setError('');
@@ -157,6 +161,26 @@ export default function MecanicoOTDetallePage() {
         body: JSON.stringify({ estado: nuevoEstado }),
       });
       if (!res.ok) throw new Error('Error al actualizar');
+      await fetchOT();
+    } finally {
+      setAccionLoading(false);
+    }
+  };
+
+  const handleTerminarConCosto = async () => {
+    if (!ot) return;
+    setAccionLoading(true);
+    try {
+      const monto = parseInt(costoMOInput.replace(/\D/g, '')) || 0;
+      await fetch(`/api/ordenes-trabajo/${ot.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          estado: 'listo_para_entregar',
+          costo_mo_override: monto > 0 ? monto : null,
+        }),
+      });
+      setTerminarDialogOpen(false);
       await fetchOT();
     } finally {
       setAccionLoading(false);
@@ -284,11 +308,11 @@ export default function MecanicoOTDetallePage() {
           {ot.estado === 'en_reparacion' && (
             <div className="flex flex-col items-end gap-1">
               <Button
-                onClick={() => handleCambiarEstado('listo_para_entregar')}
+                onClick={() => { setCostoMOInput(''); setTerminarDialogOpen(true); }}
                 disabled={accionLoading || !canTerminar}
                 className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
               >
-                {accionLoading ? 'Procesando...' : 'Marcar como terminado'}
+                Marcar como terminado
               </Button>
               {!todasCompletadas && mdoItems.length > 0 && (
                 <p className="text-xs text-zinc-400">
@@ -612,6 +636,54 @@ export default function MecanicoOTDetallePage() {
         initialObservaciones={(() => { try { return JSON.parse(ot.observaciones ?? '[]') as ObservacionItem[]; } catch { return []; } })()}
         editable={ot.estado === 'en_reparacion'}
       />
+
+      {/* Dialog Terminar OT — costo mano de obra */}
+      <Dialog open={terminarDialogOpen} onOpenChange={(o) => { if (!o) setTerminarDialogOpen(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>¿Cuánto cobrás por esta OT?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <p className="text-sm text-zinc-500">
+              Ingresá el monto de mano de obra que cobraste. Podés dejarlo en blanco si no aplica.
+            </p>
+            <div>
+              <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Costo de mano de obra ($)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  autoFocus
+                  className="w-full border border-zinc-300 rounded-lg pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  placeholder="0"
+                  value={costoMOInput}
+                  onChange={e => setCostoMOInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleTerminarConCosto(); }}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setTerminarDialogOpen(false)}
+                disabled={accionLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleTerminarConCosto}
+                disabled={accionLoading}
+              >
+                {accionLoading ? 'Guardando...' : 'Confirmar y terminar'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Registrar Recepción */}
       <Dialog open={recepcionDialogOpen} onOpenChange={(o) => { if (!o) setRecepcionDialogOpen(false); }}>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { recepciones, vehiculos, clientes, mecanicos, puestos, ordenes_trabajo } from '@/lib/db/schema';
+import { recepciones, vehiculos, clientes, mecanicos, puestos, ordenes_trabajo, cotizaciones } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
 export async function GET(
@@ -147,7 +147,12 @@ export async function DELETE(
     const { id } = await params;
     const numId = Number(id);
 
-    // Desvincular OTs que apunten a esta recepción antes de eliminar
+    // Desvincular cotizaciones y OTs que apunten a esta recepción antes de eliminar
+    await db
+      .update(cotizaciones)
+      .set({ recepcion_id: null })
+      .where(eq(cotizaciones.recepcion_id, numId));
+
     await db
       .update(ordenes_trabajo)
       .set({ recepcion_id: null, updated_at: sql`(datetime('now'))` })

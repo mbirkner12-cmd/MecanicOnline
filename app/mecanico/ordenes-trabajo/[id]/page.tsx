@@ -14,6 +14,7 @@ import { EstadoBadgeOT, type EstadoOT } from '@/components/ordenes-trabajo/Estad
 import { ObservacionesOT, type ObservacionItem } from '@/components/ordenes-trabajo/ObservacionesOT';
 import { ArrowLeft, Car, User, Wrench, Calendar, FileText, Package, ClipboardList, CheckCircle2, Circle, ClipboardCheck, FileDown, Receipt } from 'lucide-react';
 import { GastosOT } from '@/components/ordenes-trabajo/GastosOT';
+import { RepuestosInventarioOT } from '@/components/ordenes-trabajo/RepuestosInventarioOT';
 import { DiagnosticoDisplay } from '@/components/diagnostico/DiagnosticoDisplay';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormRecepcion, type FormRecepcionValues } from '@/components/recepcion/FormRecepcion';
@@ -612,6 +613,25 @@ export default function MecanicoOTDetallePage() {
           })()}
         </CardContent>
       </Card>
+
+      {/* Repuestos del inventario */}
+      {(ot.estado === 'en_reparacion' || ot.estado === 'listo_para_entregar' || ot.estado === 'entregado') && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Package className="size-4 text-zinc-500" />
+              Repuestos del inventario
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RepuestosInventarioOT
+              otId={ot.id}
+              editable={ot.estado === 'en_reparacion'}
+              vehiculo={ot.vehiculo ? { marca: ot.vehiculo.marca, modelo: ot.vehiculo.modelo, anio: ot.vehiculo.anio } : undefined}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Implementos y gastos */}
       {(ot.estado === 'en_reparacion' || ot.estado === 'listo_para_entregar' || ot.estado === 'entregado') && (

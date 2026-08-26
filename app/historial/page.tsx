@@ -1,23 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Car, Wrench, Package, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Search, Car, Wrench, Package, CheckCircle2, Clock, AlertCircle, Circle, DollarSign } from "lucide-react";
+
+interface TareaItem {
+  detalle: string;
+  completada: boolean;
+}
 
 interface InsumoItem {
   detalle: string;
   cantidad: number;
   unidad: string;
-  precio_unitario?: number;
 }
 
 interface Trabajo {
   numero: string;
   estado: string;
   diagnostico: string | null;
-  insumos: InsumoItem[];
+  motivo_ingreso: string | null;
   fecha_ingreso: string | null;
   fecha_entrega: string | null;
-  motivo_ingreso: string | null;
+  tareas: TareaItem[];
+  insumos: InsumoItem[];
+  total_cobrado: number | null;
 }
 
 interface Vehiculo {
@@ -33,11 +39,20 @@ interface HistorialData {
 }
 
 const ESTADO_INFO: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  creada: { label: "Programado", color: "text-zinc-500 bg-zinc-100", icon: <Clock className="h-3.5 w-3.5" /> },
+  creada: { label: "Programado", color: "text-zinc-600 bg-zinc-100", icon: <Clock className="h-3.5 w-3.5" /> },
   en_reparacion: { label: "En reparación", color: "text-blue-700 bg-blue-100", icon: <Wrench className="h-3.5 w-3.5" /> },
   listo_para_entregar: { label: "Listo para retirar", color: "text-amber-700 bg-amber-100", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
   entregado: { label: "Entregado", color: "text-green-700 bg-green-100", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
 };
+
+function formatCLP(n: number) {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", minimumFractionDigits: 0 }).format(Math.round(n));
+}
+
+function formatFecha(s: string | null) {
+  if (!s) return null;
+  return new Date(s).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
+}
 
 function normalizePatente(p: string) {
   return p.trim().toUpperCase().replace(/[\s\-]/g, "");
@@ -83,8 +98,8 @@ export default function HistorialPage() {
             <Wrench className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-zinc-900">Historial de mi vehículo</h1>
-            <p className="text-sm text-zinc-500">Consultá los trabajos realizados</p>
+            <h1 className="text-lg font-semibold text-zinc-900">Estado de mi vehículo</h1>
+            <p className="text-sm text-zinc-500">Seguí el progreso del trabajo en tu auto</p>
           </div>
         </div>
       </div>
@@ -151,11 +166,20 @@ export default function HistorialPage() {
 
             {data.trabajos.map((t, i) => {
               const estado = ESTADO_INFO[t.estado] ?? ESTADO_INFO.creada;
+              const entregado = t.estado === "entregado";
+              const completadas = t.tareas.filter((tarea) => tarea.completada).length;
+              const total = t.tareas.length;
+
               return (
                 <div key={i} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
                   {/* OT header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
-                    <span className="text-sm font-semibold text-zinc-800">OT {t.numero}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-zinc-800">OT {t.numero}</span>
+                      {t.fecha_ingreso && (
+                        <span className="text-xs text-zinc-400">{formatFecha(t.fecha_ingreso)}</span>
+                      )}
+                    </div>
                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${estado.color}`}>
                       {estado.icon}
                       {estado.label}
@@ -166,25 +190,64 @@ export default function HistorialPage() {
                     {/* Motivo */}
                     {t.motivo_ingreso && (
                       <div>
-                        <p className="text-xs text-zinc-400 mb-1">Motivo de ingreso</p>
+                        <p className="text-xs font-medium text-zinc-400 mb-1">Motivo de ingreso</p>
                         <p className="text-sm text-zinc-700">{t.motivo_ingreso}</p>
                       </div>
                     )}
 
-                    {/* Diagnóstico */}
-                    {t.diagnostico && (
+                    {/* Task checklist */}
+                    {t.tareas.length > 0 && (
                       <div>
-                        <p className="text-xs text-zinc-400 mb-1">Diagnóstico y trabajo realizado</p>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-medium text-zinc-400">Trabajos a realizar</p>
+                          {!entregado && (
+                            <span className="text-xs font-semibold text-zinc-600">
+                              {completadas}/{total} completados
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Progress bar for active OTs */}
+                        {!entregado && total > 0 && (
+                          <div className="w-full h-1.5 bg-zinc-100 rounded-full mb-3 overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500 rounded-full transition-all"
+                              style={{ width: `${(completadas / total) * 100}%` }}
+                            />
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          {t.tareas.map((tarea, j) => (
+                            <div key={j} className="flex items-start gap-2.5">
+                              {tarea.completada ? (
+                                <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-zinc-300 flex-shrink-0 mt-0.5" />
+                              )}
+                              <span className={`text-sm ${tarea.completada ? "text-zinc-700" : "text-zinc-400"}`}>
+                                {tarea.detalle}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Diagnosis — only for delivered */}
+                    {entregado && t.diagnostico && (
+                      <div>
+                        <p className="text-xs font-medium text-zinc-400 mb-1">Diagnóstico y trabajo realizado</p>
                         <p className="text-sm text-zinc-700 whitespace-pre-wrap">{t.diagnostico}</p>
                       </div>
                     )}
 
-                    {/* Insumos */}
-                    {t.insumos.length > 0 && (
+                    {/* Insumos — only for delivered */}
+                    {entregado && t.insumos.length > 0 && (
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
                           <Package className="h-3.5 w-3.5 text-zinc-400" />
-                          <p className="text-xs text-zinc-400">Repuestos e insumos utilizados</p>
+                          <p className="text-xs font-medium text-zinc-400">Repuestos e insumos utilizados</p>
                         </div>
                         <div className="rounded-lg border border-zinc-100 divide-y divide-zinc-100">
                           {t.insumos.map((ins, j) => (
@@ -197,6 +260,24 @@ export default function HistorialPage() {
                           ))}
                         </div>
                       </div>
+                    )}
+
+                    {/* Total — only for delivered */}
+                    {entregado && t.total_cobrado != null && (
+                      <div className="flex items-center justify-between rounded-xl bg-zinc-900 px-4 py-3 mt-2">
+                        <div className="flex items-center gap-2 text-zinc-300">
+                          <DollarSign className="h-4 w-4" />
+                          <span className="text-sm font-medium">Total cobrado (c/IVA)</span>
+                        </div>
+                        <span className="text-lg font-bold text-white">{formatCLP(t.total_cobrado)}</span>
+                      </div>
+                    )}
+
+                    {/* Fecha entrega */}
+                    {entregado && t.fecha_entrega && (
+                      <p className="text-xs text-zinc-400 text-right">
+                        Entregado el {formatFecha(t.fecha_entrega)}
+                      </p>
                     )}
                   </div>
                 </div>

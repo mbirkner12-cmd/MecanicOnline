@@ -72,8 +72,8 @@ export default function CobrosPage() {
     return true;
   });
 
-  const totalPendiente = cobros.filter(c => !c.pagado).reduce((s, c) => s + (c.cotizacion?.total ?? 0), 0);
-  const totalCobrado = cobros.filter(c => c.pagado).reduce((s, c) => s + (c.cotizacion?.total ?? 0), 0);
+  const totalPendiente = cobros.filter(c => !c.pagado).reduce((s, c) => s + (c.cotizacion?.total ?? 0) * 1.19, 0);
+  const totalCobrado = cobros.filter(c => c.pagado).reduce((s, c) => s + (c.cotizacion?.total ?? 0) * 1.19, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -126,7 +126,7 @@ export default function CobrosPage() {
               <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">N° OT</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500">Cliente / Vehículo</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 hidden md:table-cell">Estado</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-zinc-500">Total</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-zinc-500">Total (c/IVA)</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 hidden lg:table-cell">Método</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500">Pagado</th>
             </tr>
@@ -167,7 +167,7 @@ export default function CobrosPage() {
                     <EstadoBadgeOT estado={c.estado} />
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-zinc-900">
-                    {formatCLP(c.cotizacion?.total ?? 0)}
+                    {formatCLP((c.cotizacion?.total ?? 0) * 1.19)}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <select

@@ -782,13 +782,13 @@ export default function OTDetallePage() {
                   </div>
                 )}
 
-                {/* Retiro/entrega */}
-                {cot.retiro_entrega_monto > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-zinc-600">Retiro y entrega</span>
-                    <span className="font-medium text-zinc-900">{formatPesos(cot.retiro_entrega_monto)}</span>
-                  </div>
-                )}
+                {/* Retiro/entrega — siempre visible en el desglose */}
+                <div className="flex justify-between">
+                  <span className="text-zinc-600">Retiro y entrega</span>
+                  <span className={`font-medium ${(cot.retiro_entrega_monto ?? 0) > 0 ? 'text-zinc-900' : 'text-zinc-400'}`}>
+                    {formatPesos(cot.retiro_entrega_monto ?? 0)}
+                  </span>
+                </div>
 
                 {/* Totales */}
                 <div className="border-t border-zinc-200 pt-3 space-y-1">

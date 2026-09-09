@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { DollarSign, CheckCircle2, Clock, Filter } from 'lucide-react';
+import { DollarSign, CheckCircle2, Clock, Filter, FileText, AlertTriangle } from 'lucide-react';
 import { EstadoBadgeOT, type EstadoOT } from '@/components/ordenes-trabajo/EstadoBadgeOT';
 
 interface CobroRow {
@@ -11,6 +11,7 @@ interface CobroRow {
   estado: EstadoOT;
   metodo_pago: string | null;
   pagado: boolean;
+  boleta_creada: boolean;
   fecha_hora_fin: string | null;
   updated_at: string;
   vehiculo: { patente: string; marca: string; modelo: string; anio: number } | null;
@@ -52,7 +53,7 @@ export default function CobrosPage() {
 
   useEffect(() => { fetchCobros(); }, [fetchCobros]);
 
-  async function actualizarPago(id: number, campos: { pagado?: boolean; metodo_pago?: string | null }) {
+  async function actualizarPago(id: number, campos: { pagado?: boolean; metodo_pago?: string | null; boleta_creada?: boolean }) {
     setActualizando(id);
     try {
       await fetch(`/api/ordenes-trabajo/${id}`, {
@@ -128,6 +129,7 @@ export default function CobrosPage() {
               <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 hidden md:table-cell">Estado</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-zinc-500">Total (c/IVA)</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 hidden lg:table-cell">Método</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 hidden lg:table-cell">Boleta</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500">Pagado</th>
             </tr>
           </thead>
@@ -135,7 +137,7 @@ export default function CobrosPage() {
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <tr key={i} className="border-b border-zinc-100">
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 bg-zinc-100 rounded animate-pulse" />
                     </td>
@@ -144,61 +146,99 @@ export default function CobrosPage() {
               ))
             ) : filtrados.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-zinc-400 text-sm">
+                <td colSpan={7} className="px-4 py-10 text-center text-zinc-400 text-sm">
                   No hay órdenes en este estado.
                 </td>
               </tr>
             ) : (
-              filtrados.map(c => (
-                <tr key={c.id} className={`border-b border-zinc-100 last:border-0 transition-colors ${c.pagado ? 'bg-green-50/30' : ''}`}>
-                  <td className="px-4 py-3">
-                    <Link href={`/ordenes-trabajo/${c.id}`} className="font-mono font-semibold text-zinc-900 hover:text-blue-600 hover:underline">
-                      {c.numero}
-                    </Link>
-                    <p className="text-xs text-zinc-400 mt-0.5">{formatFecha(c.fecha_hora_fin ?? c.updated_at)}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-zinc-900">{c.cliente?.nombre ?? '—'}</p>
-                    <p className="text-xs text-zinc-400">
-                      {c.vehiculo ? `${c.vehiculo.patente} · ${c.vehiculo.marca} ${c.vehiculo.modelo} ${c.vehiculo.anio}` : '—'}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <EstadoBadgeOT estado={c.estado} />
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold text-zinc-900">
-                    {formatCLP((c.cotizacion?.total ?? 0) * 1.19)}
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <select
-                      value={c.metodo_pago ?? ''}
-                      disabled={actualizando === c.id}
-                      onChange={e => actualizarPago(c.id, { metodo_pago: e.target.value || null })}
-                      className="border border-zinc-200 rounded-lg px-2 py-1 text-xs text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:opacity-50 w-36"
-                    >
-                      <option value="">Sin especificar</option>
-                      {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      disabled={actualizando === c.id}
-                      onClick={() => actualizarPago(c.id, { pagado: !c.pagado })}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
-                        c.pagado
-                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                          : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
-                      }`}
-                      title={c.pagado ? 'Marcar como no pagado' : 'Marcar como pagado'}
-                    >
-                      {c.pagado
-                        ? <><CheckCircle2 className="h-3.5 w-3.5" /> Pagado</>
-                        : <><DollarSign className="h-3.5 w-3.5" /> Pendiente</>
-                      }
-                    </button>
-                  </td>
-                </tr>
-              ))
+              filtrados.map(c => {
+                const necesitaBoleta = c.metodo_pago === 'transferencia' && !c.boleta_creada;
+                return (
+                  <tr key={c.id} className={`border-b border-zinc-100 last:border-0 transition-colors ${c.pagado ? 'bg-green-50/30' : ''}`}>
+                    <td className="px-4 py-3">
+                      <Link href={`/ordenes-trabajo/${c.id}`} className="font-mono font-semibold text-zinc-900 hover:text-blue-600 hover:underline">
+                        {c.numero}
+                      </Link>
+                      <p className="text-xs text-zinc-400 mt-0.5">{formatFecha(c.fecha_hora_fin ?? c.updated_at)}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-zinc-900">{c.cliente?.nombre ?? '—'}</p>
+                      <p className="text-xs text-zinc-400">
+                        {c.vehiculo ? `${c.vehiculo.patente} · ${c.vehiculo.marca} ${c.vehiculo.modelo} ${c.vehiculo.anio}` : '—'}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <EstadoBadgeOT estado={c.estado} />
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-zinc-900">
+                      {formatCLP((c.cotizacion?.total ?? 0) * 1.19)}
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      <select
+                        value={c.metodo_pago ?? ''}
+                        disabled={actualizando === c.id}
+                        onChange={e => actualizarPago(c.id, { metodo_pago: e.target.value || null })}
+                        className="border border-zinc-200 rounded-lg px-2 py-1 text-xs text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:opacity-50 w-36"
+                      >
+                        <option value="">Sin especificar</option>
+                        {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                    </td>
+                    {/* Boleta — solo relevante para transferencias */}
+                    <td className="px-4 py-3 text-center hidden lg:table-cell">
+                      {c.metodo_pago === 'transferencia' ? (
+                        <button
+                          disabled={actualizando === c.id}
+                          onClick={() => actualizarPago(c.id, { boleta_creada: !c.boleta_creada })}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+                            c.boleta_creada
+                              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                              : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                          }`}
+                          title={c.boleta_creada ? 'Marcar boleta como pendiente' : 'Marcar boleta como creada'}
+                        >
+                          {c.boleta_creada
+                            ? <><FileText className="h-3.5 w-3.5" /> Creada</>
+                            : <><AlertTriangle className="h-3.5 w-3.5" /> Pendiente</>
+                          }
+                        </button>
+                      ) : (
+                        <span className="text-xs text-zinc-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex flex-col items-center gap-1.5">
+                        <button
+                          disabled={actualizando === c.id}
+                          onClick={() => actualizarPago(c.id, { pagado: !c.pagado })}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+                            c.pagado
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                          }`}
+                          title={c.pagado ? 'Marcar como no pagado' : 'Marcar como pagado'}
+                        >
+                          {c.pagado
+                            ? <><CheckCircle2 className="h-3.5 w-3.5" /> Pagado</>
+                            : <><DollarSign className="h-3.5 w-3.5" /> Pendiente</>
+                          }
+                        </button>
+                        {/* Alerta boleta pendiente — visible en móvil también */}
+                        {necesitaBoleta && (
+                          <button
+                            disabled={actualizando === c.id}
+                            onClick={() => actualizarPago(c.id, { boleta_creada: true })}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-50 lg:hidden"
+                            title="Boleta pendiente — clic para marcar como creada"
+                          >
+                            <AlertTriangle className="h-3 w-3" /> Boleta
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

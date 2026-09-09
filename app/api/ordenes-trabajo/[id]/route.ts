@@ -48,6 +48,7 @@ async function getOTById(id: number) {
       costo_mo_detalle: ordenes_trabajo.costo_mo_detalle,
       metodo_pago: ordenes_trabajo.metodo_pago,
       pagado: ordenes_trabajo.pagado,
+      boleta_creada: ordenes_trabajo.boleta_creada,
       estado: ordenes_trabajo.estado,
       created_at: ordenes_trabajo.created_at,
       updated_at: ordenes_trabajo.updated_at,
@@ -166,6 +167,7 @@ export async function PUT(
       costo_mo_detalle?: string | null;
       metodo_pago?: string | null;
       pagado?: boolean;
+      boleta_creada?: boolean;
       estado?: 'creada' | 'en_reparacion' | 'listo_para_entregar' | 'entregado';
     };
 
@@ -234,6 +236,9 @@ export async function PUT(
     }
     if (body.pagado !== undefined) {
       updateFields.pagado = body.pagado;
+    }
+    if (body.boleta_creada !== undefined) {
+      updateFields.boleta_creada = body.boleta_creada;
     }
     if (body.estado !== undefined) {
       updateFields.estado = body.estado;

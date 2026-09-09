@@ -122,6 +122,7 @@ export default function MecanicoOTDetallePage() {
   // Dialog costo MO al terminar
   const [terminarDialogOpen, setTerminarDialogOpen] = useState(false);
   const [costoMOInput, setCostoMOInput] = useState('');
+  const [costoMODetalle, setCostoMODetalle] = useState('');
 
   const fetchOT = async () => {
     setLoading(true);
@@ -179,6 +180,7 @@ export default function MecanicoOTDetallePage() {
         body: JSON.stringify({
           estado: 'listo_para_entregar',
           costo_mo_override: monto > 0 ? monto : null,
+          costo_mo_detalle: costoMODetalle.trim() || null,
         }),
       });
       setTerminarDialogOpen(false);
@@ -311,7 +313,7 @@ export default function MecanicoOTDetallePage() {
           {ot.estado === 'en_reparacion' && (
             <div className="flex flex-col items-end gap-1">
               <Button
-                onClick={() => { setCostoMOInput(''); setTerminarDialogOpen(true); }}
+                onClick={() => { setCostoMOInput(''); setCostoMODetalle(''); setTerminarDialogOpen(true); }}
                 disabled={accionLoading || !canTerminar}
                 className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
               >
@@ -667,10 +669,10 @@ export default function MecanicoOTDetallePage() {
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <p className="text-sm text-zinc-500">
-              Ingresá el monto de mano de obra que cobraste. Podés dejarlo en blanco si no aplica.
+              Ingresá el monto y un breve detalle de lo que cobraste.
             </p>
             <div>
-              <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Costo de mano de obra ($)</label>
+              <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Monto de mano de obra ($)</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
                 <input
@@ -682,9 +684,18 @@ export default function MecanicoOTDetallePage() {
                   placeholder="0"
                   value={costoMOInput}
                   onChange={e => setCostoMOInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleTerminarConCosto(); }}
                 />
               </div>
+            </div>
+            <div>
+              <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Detalle del trabajo cobrado</label>
+              <textarea
+                rows={3}
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+                placeholder="Ej: Cambio de aceite, filtros y revisión de frenos…"
+                value={costoMODetalle}
+                onChange={e => setCostoMODetalle(e.target.value)}
+              />
             </div>
             <div className="flex gap-2 pt-1">
               <Button

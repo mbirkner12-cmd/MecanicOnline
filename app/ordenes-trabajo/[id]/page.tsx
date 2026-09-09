@@ -42,6 +42,7 @@ interface OTDetalle {
   fecha_hora_fin: string | null;
   horas_trabajadas: number | null;
   costo_mo_override: number | null;
+  costo_mo_detalle: string | null;
   metodo_pago: string | null;
   pagado: boolean;
   estado: EstadoOT;
@@ -827,6 +828,7 @@ export default function OTDetallePage() {
                 fechaFin={ot.fecha_hora_fin}
                 horasTrabajadas={ot.horas_trabajadas}
                 costoMoOverride={ot.costo_mo_override}
+                costoMoDetalle={ot.costo_mo_detalle}
               />
             </CardContent>
           </Card>

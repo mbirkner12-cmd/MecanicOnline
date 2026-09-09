@@ -24,6 +24,7 @@ interface Props {
   fechaFin: string | null;
   horasTrabajadas: number | null;
   costoMoOverride: number | null; // monto directo, tiene precedencia sobre horas
+  costoMoDetalle?: string | null;
 }
 
 function formatCLP(n: number) {
@@ -44,7 +45,7 @@ function formatHoras(h: number) {
   return `${hh}h ${mm}min`;
 }
 
-export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride }: Props) {
+export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle }: Props) {
   const [repuestos, setRepuestos] = useState<OTRepuesto[]>([]);
   const [valorHora, setValorHora] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -239,16 +240,21 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
             <div className="ml-5 space-y-1.5">
               {!editandoHoras && !editandoMonto && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-zinc-400">
-                    {montoGuardado !== null
-                      ? `Monto fijo: ${formatCLP(montoGuardado)}`
-                      : horasEfectivas > 0
-                        ? `${formatHoras(horasEfectivas)} × ${formatCLP(valorHora)}/h`
-                        : fechaInicio ? "OT aún no finalizada" : "Sin hora de inicio"}
-                    {(horasGuardadas !== null || montoGuardado !== null) && (
-                      <span className="ml-1 text-blue-500">(editado)</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs text-zinc-400">
+                      {montoGuardado !== null
+                        ? `Monto fijo: ${formatCLP(montoGuardado)}`
+                        : horasEfectivas > 0
+                          ? `${formatHoras(horasEfectivas)} × ${formatCLP(valorHora)}/h`
+                          : fechaInicio ? "OT aún no finalizada" : "Sin hora de inicio"}
+                      {(horasGuardadas !== null || montoGuardado !== null) && (
+                        <span className="ml-1 text-blue-500">(editado)</span>
+                      )}
+                    </span>
+                    {montoGuardado !== null && costoMoDetalle && (
+                      <span className="text-xs text-zinc-500 italic">&quot;{costoMoDetalle}&quot;</span>
                     )}
-                  </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => { setEditandoHoras(true); setHorasInput(String(horasEfectivas.toFixed(2))); }}

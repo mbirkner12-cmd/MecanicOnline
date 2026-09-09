@@ -5,6 +5,7 @@ import {
   vehiculos,
   clientes,
   recepciones,
+  cotizacion_repuestos,
 } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
@@ -147,11 +148,16 @@ export async function PUT(
       .where(eq(cotizaciones.id, numId));
 
     // Update recepcion state based on cotizacion state change (skip if no recepcion linked)
-    if (body.estado === 'rechazada' && existing.recepcion_id != null) {
-      await db
-        .update(recepciones)
-        .set({ estado: 'cotizacion_rechazada', updated_at: sql`(datetime('now'))` })
-        .where(eq(recepciones.id, existing.recepcion_id));
+    if (body.estado === 'rechazada') {
+      // Delete pending inventory repuestos (no stock impact, stock was never decremented)
+      await db.delete(cotizacion_repuestos).where(eq(cotizacion_repuestos.cotizacion_id, numId));
+
+      if (existing.recepcion_id != null) {
+        await db
+          .update(recepciones)
+          .set({ estado: 'cotizacion_rechazada', updated_at: sql`(datetime('now'))` })
+          .where(eq(recepciones.id, existing.recepcion_id));
+      }
     }
     if (body.estado === 'aceptada' && existing.recepcion_id != null) {
       await db.update(recepciones)

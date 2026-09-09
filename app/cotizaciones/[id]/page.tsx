@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { EstadoBadgeCot, type EstadoCotizacion } from "@/components/cotizaciones/EstadoBadgeCot";
 import { FormCotizacion, type FormCotizacionValues, type RepuestoItem, type ManoDeObraItem } from "@/components/cotizaciones/FormCotizacion";
+import { RepuestosCotizacion } from "@/components/cotizaciones/RepuestosCotizacion";
 import { ArrowLeft, Pencil, FileText, Car, User, ClipboardList, Truck, MessageCircle } from "lucide-react";
 import { DiagnosticoDisplay } from "@/components/diagnostico/DiagnosticoDisplay";
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
@@ -570,6 +571,26 @@ export default function CotizacionDetallePage() {
 
         {/* Repuestos */}
         <RepuestosCard title="Repuestos" items={repuestos} subtotalLabel="Subtotal repuestos" />
+
+        {/* Repuestos del inventario */}
+        {cotizacion.estado !== 'rechazada' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Repuestos del inventario</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RepuestosCotizacion
+                cotizacionId={cotizacion.id}
+                editable={cotizacion.estado === 'pendiente'}
+                vehiculo={cotizacion.vehiculo ? {
+                  marca: cotizacion.vehiculo.marca,
+                  modelo: cotizacion.vehiculo.modelo,
+                  anio: cotizacion.vehiculo.anio,
+                } : undefined}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Retiro y entrega + Totales */}
         <Card>

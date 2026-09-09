@@ -8,8 +8,11 @@ import {
   puestos,
   cotizaciones,
   recepciones,
+  cotizacion_repuestos,
+  ot_repuestos,
+  repuestos,
 } from '@/lib/db/schema';
-import { eq, desc, max } from 'drizzle-orm';
+import { eq, desc, max, sql } from 'drizzle-orm';
 
 interface InsumoItem {
   detalle: string;
@@ -161,6 +164,42 @@ export async function POST(request: Request) {
         estado: 'creada',
       })
       .returning();
+
+    // Transferir cotizacion_repuestos → ot_repuestos (descuentan stock)
+    const cotRepRows = await db
+      .select({
+        id: cotizacion_repuestos.id,
+        repuesto_id: cotizacion_repuestos.repuesto_id,
+        cantidad: cotizacion_repuestos.cantidad,
+        precio_venta_snapshot: cotizacion_repuestos.precio_venta_snapshot,
+      })
+      .from(cotizacion_repuestos)
+      .where(eq(cotizacion_repuestos.cotizacion_id, cotizacion_id));
+
+    for (const cr of cotRepRows) {
+      const [rep] = await db.select().from(repuestos).where(eq(repuestos.id, cr.repuesto_id)).limit(1);
+      if (!rep) continue;
+      const stockDisponible = rep.stock_actual ?? 0;
+      const cantidadADescontar = Math.min(cr.cantidad, stockDisponible);
+      if (cantidadADescontar <= 0) continue;
+
+      await db.insert(ot_repuestos).values({
+        ot_id: ot.id,
+        repuesto_id: cr.repuesto_id,
+        cantidad: cantidadADescontar,
+        precio_costo_snapshot: rep.precio_costo,
+        precio_venta_snapshot: cr.precio_venta_snapshot,
+      });
+
+      await db.update(repuestos).set({
+        stock_actual: stockDisponible - cantidadADescontar,
+        updated_at: sql`(datetime('now'))`,
+      }).where(eq(repuestos.id, cr.repuesto_id));
+    }
+
+    if (cotRepRows.length > 0) {
+      await db.delete(cotizacion_repuestos).where(eq(cotizacion_repuestos.cotizacion_id, cotizacion_id));
+    }
 
     // Devolver OT con todos los joins
     const result = await db

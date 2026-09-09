@@ -196,6 +196,15 @@ export const ot_repuestos = sqliteTable('ot_repuestos', {
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+export const cotizacion_repuestos = sqliteTable('cotizacion_repuestos', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  cotizacion_id: integer('cotizacion_id').notNull().references(() => cotizaciones.id),
+  repuesto_id: integer('repuesto_id').notNull().references(() => repuestos.id),
+  cantidad: integer('cantidad').notNull(),
+  precio_venta_snapshot: real('precio_venta_snapshot').notNull(),
+  created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 export const ot_gastos = sqliteTable('ot_gastos', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   ot_id: integer('ot_id').notNull().references(() => ordenes_trabajo.id),

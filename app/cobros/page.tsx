@@ -388,7 +388,7 @@ export default function CobrosPage() {
                 </tr>
               ) : (
                 filtrados.map(c => {
-                  const necesitaBoleta = c.metodo_pago === 'transferencia' && !c.boleta_creada;
+                  const necesitaBoleta = c.metodo_pago === 'transferencia' && c.tipo_documento === 'boleta' && !c.boleta_creada;
                   return (
                     <tr key={c.id} className={`border-b border-zinc-100 last:border-0 transition-colors ${c.pagado ? 'bg-green-50/30' : ''}`}>
                       <td className="px-4 py-3">
@@ -439,7 +439,7 @@ export default function CobrosPage() {
                               </button>
                             ))}
                           </div>
-                          {c.metodo_pago === 'transferencia' && (
+                          {c.metodo_pago === 'transferencia' && c.tipo_documento === 'boleta' && (
                             <button
                               disabled={actualizando === c.id}
                               onClick={() => actualizarPago(c.id, { boleta_creada: !c.boleta_creada })}
@@ -448,7 +448,7 @@ export default function CobrosPage() {
                                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                                   : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                               }`}
-                              title={c.boleta_creada ? `Marcar ${c.tipo_documento} como pendiente` : `Marcar ${c.tipo_documento} como creada`}
+                              title={c.boleta_creada ? 'Marcar boleta como pendiente' : 'Marcar boleta como creada'}
                             >
                               {c.boleta_creada
                                 ? <><FileText className="h-3.5 w-3.5" /> Creada</>

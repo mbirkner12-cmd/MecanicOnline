@@ -23,8 +23,9 @@ interface Props {
   fechaInicio: string | null;
   fechaFin: string | null;
   horasTrabajadas: number | null;
-  costoMoOverride: number | null; // monto directo, tiene precedencia sobre horas
+  costoMoOverride: number | null;
   costoMoDetalle?: string | null;
+  costoTotalOverride?: number | null;
 }
 
 function formatCLP(n: number) {
@@ -45,7 +46,7 @@ function formatHoras(h: number) {
   return `${hh}h ${mm}min`;
 }
 
-export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle }: Props) {
+export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle, costoTotalOverride }: Props) {
   const [repuestos, setRepuestos] = useState<OTRepuesto[]>([]);
   const [valorHora, setValorHora] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -62,6 +63,12 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const [montoInput, setMontoInput] = useState<string>("");
   const [montoGuardado, setMontoGuardado] = useState<number | null>(costoMoOverride);
   const [savingMonto, setSavingMonto] = useState(false);
+
+  // Total de costos override
+  const [editandoTotal, setEditandoTotal] = useState(false);
+  const [totalInput, setTotalInput] = useState<string>("");
+  const [totalGuardado, setTotalGuardado] = useState<number | null>(costoTotalOverride ?? null);
+  const [savingTotal, setSavingTotal] = useState(false);
 
   const horasEfectivas = horasGuardadas ?? horasAuto;
 
@@ -112,11 +119,45 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
     }
   }
 
+  async function guardarTotal() {
+    const t = parseInt(totalInput.replace(/\./g, "").replace(",", ""));
+    if (isNaN(t) || t < 0) return;
+    setSavingTotal(true);
+    try {
+      await fetch(`/api/ordenes-trabajo/${otId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ costo_total_override: t }),
+      });
+      setTotalGuardado(t);
+      setEditandoTotal(false);
+    } finally {
+      setSavingTotal(false);
+    }
+  }
+
+  async function limpiarTotal() {
+    setSavingTotal(true);
+    try {
+      await fetch(`/api/ordenes-trabajo/${otId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ costo_total_override: null }),
+      });
+      setTotalGuardado(null);
+      setEditandoTotal(false);
+    } finally {
+      setSavingTotal(false);
+    }
+  }
+
   function cancelarEdicion() {
     setEditandoHoras(false);
     setHorasInput("");
     setEditandoMonto(false);
     setMontoInput("");
+    setEditandoTotal(false);
+    setTotalInput("");
   }
 
   if (loading) {
@@ -136,9 +177,10 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
 
   // ── Costos ──────────────────────────────────────────────────────────────────
   const costoRepuestos = repuestos.reduce((s, r) => s + r.cantidad * r.precio_costo_snapshot, 0);
-  // Monto override tiene precedencia; si no, calcular desde horas
   const costoMoObra = montoGuardado !== null ? montoGuardado : horasEfectivas * valorHora;
-  const totalCostos = costoRepuestos + costoMoObra;
+  const totalCostosCalculado = costoRepuestos + costoMoObra;
+  // Total override tiene precedencia sobre el calculado
+  const totalCostos = totalGuardado !== null ? totalGuardado : totalCostosCalculado;
 
   // ── Resultado ───────────────────────────────────────────────────────────────
   const ganancia = totalCobrado - totalCostos;
@@ -314,9 +356,55 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
               )}
             </div>
 
-            <div className="flex justify-between border-t border-zinc-200 pt-2 font-semibold">
+            <div className="flex justify-between items-center border-t border-zinc-200 pt-2 font-semibold">
               <span className="text-zinc-800">Total costos</span>
               <span className="text-red-600">{formatCLP(totalCostos)}</span>
+            </div>
+
+            {/* Total manual override */}
+            <div className="pt-1">
+              {!editandoTotal ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {totalGuardado !== null && (
+                    <span className="text-xs text-blue-500">(total manual: {formatCLP(totalGuardado)})</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setEditandoTotal(true); setTotalInput(String(Math.round(totalCostos))); }}
+                    className="text-xs text-zinc-400 hover:text-zinc-700 underline"
+                  >
+                    {totalGuardado !== null ? "editar total manual" : "ingresar total manual"}
+                  </button>
+                  {totalGuardado !== null && (
+                    <button
+                      type="button"
+                      onClick={limpiarTotal}
+                      disabled={savingTotal}
+                      className="text-xs text-red-400 hover:text-red-600 underline disabled:opacity-50"
+                    >
+                      quitar
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-zinc-400">$</span>
+                  <input
+                    type="number" min="0" step="1000"
+                    value={totalInput}
+                    onChange={e => setTotalInput(e.target.value)}
+                    className="w-28 border border-zinc-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    placeholder="total"
+                    autoFocus
+                  />
+                  <button type="button" onClick={guardarTotal} disabled={savingTotal} className="text-green-600 hover:text-green-700 disabled:opacity-50">
+                    {savingTotal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  </button>
+                  <button type="button" onClick={cancelarEdicion} className="text-zinc-400 hover:text-zinc-600">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -26,6 +26,7 @@ interface OTDetalle {
   diagnostico: string | null;
   costo_mo_detalle: string | null;
   insumos: string;
+  cliente: { nombre: string; rut: string | null } | null;
   cotizacion: {
     total: number;
     mano_de_obra_monto: number;
@@ -128,6 +129,22 @@ function DetalleModal({ otId, onClose }: { otId: number; onClose: () => void }) 
             <p className="text-sm text-zinc-400 text-center py-12">No se pudo cargar el detalle.</p>
           ) : (
             <>
+              {/* Cliente */}
+              {ot.cliente && (
+                <section className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs text-zinc-500 mb-0.5">Cliente</p>
+                    <p className="text-sm font-semibold text-zinc-900">{ot.cliente.nombre}</p>
+                  </div>
+                  {ot.cliente.rut && (
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500 mb-0.5">RUT</p>
+                      <p className="text-sm font-mono text-zinc-700">{ot.cliente.rut}</p>
+                    </div>
+                  )}
+                </section>
+              )}
+
               {/* Diagnóstico */}
               {ot.diagnostico && (
                 <section>

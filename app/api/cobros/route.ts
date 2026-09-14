@@ -13,6 +13,7 @@ export async function GET() {
         metodo_pago: ordenes_trabajo.metodo_pago,
         pagado: ordenes_trabajo.pagado,
         boleta_creada: ordenes_trabajo.boleta_creada,
+        tipo_documento: ordenes_trabajo.tipo_documento,
         fecha_hora_fin: ordenes_trabajo.fecha_hora_fin,
         updated_at: ordenes_trabajo.updated_at,
         vehiculo: {

@@ -12,6 +12,7 @@ interface CobroRow {
   metodo_pago: string | null;
   pagado: boolean;
   boleta_creada: boolean;
+  tipo_documento: 'boleta' | 'factura';
   fecha_hora_fin: string | null;
   updated_at: string;
   vehiculo: { patente: string; marca: string; modelo: string; anio: number } | null;
@@ -53,7 +54,7 @@ export default function CobrosPage() {
 
   useEffect(() => { fetchCobros(); }, [fetchCobros]);
 
-  async function actualizarPago(id: number, campos: { pagado?: boolean; metodo_pago?: string | null; boleta_creada?: boolean }) {
+  async function actualizarPago(id: number, campos: { pagado?: boolean; metodo_pago?: string | null; boleta_creada?: boolean; tipo_documento?: 'boleta' | 'factura' }) {
     setActualizando(id);
     try {
       await fetch(`/api/ordenes-trabajo/${id}`, {
@@ -129,7 +130,7 @@ export default function CobrosPage() {
               <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 hidden md:table-cell">Estado</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-zinc-500">Total (c/IVA)</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 hidden lg:table-cell">Método</th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 hidden lg:table-cell">Boleta</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500 hidden lg:table-cell">Documento</th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-zinc-500">Pagado</th>
             </tr>
           </thead>
@@ -184,27 +185,45 @@ export default function CobrosPage() {
                         {METODOS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                       </select>
                     </td>
-                    {/* Boleta — solo relevante para transferencias */}
-                    <td className="px-4 py-3 text-center hidden lg:table-cell">
-                      {c.metodo_pago === 'transferencia' ? (
-                        <button
-                          disabled={actualizando === c.id}
-                          onClick={() => actualizarPago(c.id, { boleta_creada: !c.boleta_creada })}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
-                            c.boleta_creada
-                              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                              : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                          }`}
-                          title={c.boleta_creada ? 'Marcar boleta como pendiente' : 'Marcar boleta como creada'}
-                        >
-                          {c.boleta_creada
-                            ? <><FileText className="h-3.5 w-3.5" /> Creada</>
-                            : <><AlertTriangle className="h-3.5 w-3.5" /> Pendiente</>
-                          }
-                        </button>
-                      ) : (
-                        <span className="text-xs text-zinc-300">—</span>
-                      )}
+                    {/* Documento — boleta o factura + estado creada/pendiente */}
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      <div className="flex flex-col items-center gap-1.5">
+                        {/* Selector tipo documento */}
+                        <div className="flex rounded-lg overflow-hidden border border-zinc-200 text-xs">
+                          {(['boleta', 'factura'] as const).map(tipo => (
+                            <button
+                              key={tipo}
+                              disabled={actualizando === c.id}
+                              onClick={() => actualizarPago(c.id, { tipo_documento: tipo })}
+                              className={`px-2.5 py-1 font-medium transition-colors disabled:opacity-50 capitalize ${
+                                c.tipo_documento === tipo
+                                  ? 'bg-zinc-900 text-white'
+                                  : 'bg-white text-zinc-500 hover:bg-zinc-50'
+                              }`}
+                            >
+                              {tipo}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Estado creada/pendiente — solo para transferencia */}
+                        {c.metodo_pago === 'transferencia' && (
+                          <button
+                            disabled={actualizando === c.id}
+                            onClick={() => actualizarPago(c.id, { boleta_creada: !c.boleta_creada })}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+                              c.boleta_creada
+                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                            }`}
+                            title={c.boleta_creada ? `Marcar ${c.tipo_documento} como pendiente` : `Marcar ${c.tipo_documento} como creada`}
+                          >
+                            {c.boleta_creada
+                              ? <><FileText className="h-3.5 w-3.5" /> Creada</>
+                              : <><AlertTriangle className="h-3.5 w-3.5" /> Pendiente</>
+                            }
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex flex-col items-center gap-1.5">
@@ -223,15 +242,15 @@ export default function CobrosPage() {
                             : <><DollarSign className="h-3.5 w-3.5" /> Pendiente</>
                           }
                         </button>
-                        {/* Alerta boleta pendiente — visible en móvil también */}
+                        {/* Alerta doc pendiente — visible en móvil también */}
                         {necesitaBoleta && (
                           <button
                             disabled={actualizando === c.id}
                             onClick={() => actualizarPago(c.id, { boleta_creada: true })}
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors disabled:opacity-50 lg:hidden"
-                            title="Boleta pendiente — clic para marcar como creada"
+                            title={`${c.tipo_documento === 'factura' ? 'Factura' : 'Boleta'} pendiente — clic para marcar como creada`}
                           >
-                            <AlertTriangle className="h-3 w-3" /> Boleta
+                            <AlertTriangle className="h-3 w-3" /> {c.tipo_documento === 'factura' ? 'Factura' : 'Boleta'}
                           </button>
                         )}
                       </div>

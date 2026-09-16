@@ -6,6 +6,7 @@ import {
   clientes,
   recepciones,
   cotizacion_repuestos,
+  ordenes_trabajo,
 } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
@@ -58,7 +59,16 @@ async function getCotizacionById(id: number) {
     .where(eq(cotizaciones.id, id))
     .limit(1);
 
-  return result[0] ?? null;
+  if (!result[0]) return null;
+
+  // Buscar OT vinculada
+  const otRows = await db
+    .select({ id: ordenes_trabajo.id, numero: ordenes_trabajo.numero })
+    .from(ordenes_trabajo)
+    .where(eq(ordenes_trabajo.cotizacion_id, id))
+    .limit(1);
+
+  return { ...result[0], ot: otRows[0] ?? null };
 }
 
 // ── GET /api/cotizaciones/[id] ───────────────────────────────────────────────

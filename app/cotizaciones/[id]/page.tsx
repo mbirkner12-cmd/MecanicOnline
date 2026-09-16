@@ -27,7 +27,7 @@ import {
 import { EstadoBadgeCot, type EstadoCotizacion } from "@/components/cotizaciones/EstadoBadgeCot";
 import { FormCotizacion, type FormCotizacionValues, type RepuestoItem, type ManoDeObraItem } from "@/components/cotizaciones/FormCotizacion";
 import { RepuestosCotizacion } from "@/components/cotizaciones/RepuestosCotizacion";
-import { ArrowLeft, Pencil, FileText, Car, User, ClipboardList, Truck, MessageCircle } from "lucide-react";
+import { ArrowLeft, Pencil, FileText, Car, User, ClipboardList, Truck, MessageCircle, Wrench } from "lucide-react";
 import { DiagnosticoDisplay } from "@/components/diagnostico/DiagnosticoDisplay";
 import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/FormRecepcion";
 
@@ -35,6 +35,7 @@ import { FormRecepcion, type FormRecepcionValues } from "@/components/recepcion/
 interface CotizacionDetalle {
   id: number;
   numero: string;
+  ot: { id: number; numero: string } | null;
   recepcion_id: number | null;
   vehiculo_id: number;
   cliente_id: number;
@@ -427,6 +428,23 @@ export default function CotizacionDetallePage() {
             </Button>
           </div>
         </div>
+
+        {/* Banner: OT asociada */}
+        {cotizacion.ot && (
+          <Link
+            href={`/ordenes-trabajo/${cotizacion.ot.id}`}
+            className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center justify-between gap-4 hover:bg-zinc-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Wrench className="size-4 text-zinc-500 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-zinc-900">Orden de trabajo asociada</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Esta cotización generó la {cotizacion.ot.numero}</p>
+              </div>
+            </div>
+            <span className="font-mono font-semibold text-zinc-900 text-sm shrink-0">{cotizacion.ot.numero} →</span>
+          </Link>
+        )}
 
         {/* Banner: cotización aceptada sin recepción */}
         {cotizacion.estado === "aceptada" && !cotizacion.recepcion_id && (

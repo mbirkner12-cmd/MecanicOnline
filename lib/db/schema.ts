@@ -146,6 +146,7 @@ export const ordenes_trabajo = sqliteTable('ordenes_trabajo', {
   costo_mo_override: real('costo_mo_override'),
   costo_mo_detalle: text('costo_mo_detalle'),
   costo_total_override: real('costo_total_override'),
+  costo_repuestos_cot: text('costo_repuestos_cot'),
   tareas_completadas: text('tareas_completadas').default('[]').notNull(),
   observaciones: text('observaciones').default('[]').notNull(),
   estado: text('estado', {

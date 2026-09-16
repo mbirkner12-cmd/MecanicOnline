@@ -27,6 +27,7 @@ interface Props {
   costoMoOverride: number | null;
   costoMoDetalle?: string | null;
   costoTotalOverride?: number | null;
+  costoRepuestosCot?: string | null;
 }
 
 function formatCLP(n: number) {
@@ -47,15 +48,23 @@ function formatHoras(h: number) {
   return `${hh}h ${mm}min`;
 }
 
-export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle, costoTotalOverride }: Props) {
+export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle, costoTotalOverride, costoRepuestosCot }: Props) {
   const [repuestos, setRepuestos] = useState<OTRepuesto[]>([]);
   const [valorHora, setValorHora] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Edición inline de costo de repuesto
+  // Edición inline de costo de repuesto de inventario (ot_repuestos)
   const [editandoRepuesto, setEditandoRepuesto] = useState<number | null>(null); // id de ot_repuesto
   const [repuestoInput, setRepuestoInput] = useState('');
   const [savingRepuesto, setSavingRepuesto] = useState(false);
+
+  // Edición inline de costo de repuesto de cotización
+  const [costosCot, setCostosCot] = useState<(number | null)[]>(() => {
+    try { return JSON.parse(costoRepuestosCot ?? 'null') as number[] ?? []; } catch { return []; }
+  });
+  const [editandoCotIdx, setEditandoCotIdx] = useState<number | null>(null);
+  const [cotInput, setCotInput] = useState('');
+  const [savingCot, setSavingCot] = useState(false);
 
   // Horas editables
   const horasAuto = fechaInicio ? horasCalculadas(fechaInicio, fechaFin) : 0;
@@ -174,6 +183,26 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
     }
   }
 
+  async function guardarCostoCot(idx: number) {
+    const costo = parseInt(cotInput.replace(/\./g, "").replace(",", ""));
+    if (isNaN(costo) || costo < 0) return;
+    setSavingCot(true);
+    try {
+      const repsCot = (() => { try { return JSON.parse(cotizacion?.repuestos ?? "[]") as Array<{ cantidad: number }>; } catch { return []; } })();
+      const nuevos: (number | null)[] = Array.from({ length: repsCot.length }, (_, i) => costosCot[i] ?? null);
+      nuevos[idx] = costo;
+      await fetch(`/api/ordenes-trabajo/${otId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ costo_repuestos_cot: nuevos }),
+      });
+      setCostosCot(nuevos);
+      setEditandoCotIdx(null);
+    } finally {
+      setSavingCot(false);
+    }
+  }
+
   function cancelarEdicion() {
     setEditandoHoras(false);
     setHorasInput("");
@@ -183,6 +212,8 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
     setTotalInput("");
     setEditandoRepuesto(null);
     setRepuestoInput("");
+    setEditandoCotIdx(null);
+    setCotInput("");
   }
 
   if (loading) {
@@ -201,9 +232,11 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   } catch { /* */ }
 
   // ── Costos ──────────────────────────────────────────────────────────────────
+  const repsCot = (() => { try { return JSON.parse(cotizacion?.repuestos ?? "[]") as Array<{ detalle: string; cantidad: number; unidad: string; valor_unitario: number }>; } catch { return []; } })();
   const costoRepuestos = repuestos.reduce((s, r) => s + r.cantidad * r.precio_costo_snapshot, 0);
+  const costoRepuestosCotTotal = repsCot.reduce((s, r, i) => s + r.cantidad * (costosCot[i] ?? 0), 0);
   const costoMoObra = montoGuardado !== null ? montoGuardado : horasEfectivas * valorHora;
-  const totalCostosCalculado = costoRepuestos + costoMoObra;
+  const totalCostosCalculado = costoRepuestos + costoRepuestosCotTotal + costoMoObra;
   // Total override tiene precedencia sobre el calculado
   const totalCostos = totalGuardado !== null ? totalGuardado : totalCostosCalculado;
 
@@ -327,6 +360,66 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* Repuestos de cotización con costo editable */}
+            {repsCot.length > 0 && (
+              <>
+                <div className="flex justify-between">
+                  <div className="flex items-center gap-1.5 text-zinc-600">
+                    <Package className="h-3.5 w-3.5" />
+                    <span>Repuestos cotizados (costo)</span>
+                  </div>
+                  <span className="font-medium">{formatCLP(costoRepuestosCotTotal)}</span>
+                </div>
+                <div className="ml-5 space-y-1.5">
+                  {repsCot.map((r, i) => {
+                    const costoUnit = costosCot[i] ?? null;
+                    return (
+                      <div key={i} className="text-xs text-zinc-400">
+                        <div className="flex justify-between items-center">
+                          <span className="truncate max-w-[8rem]">{r.detalle} × {r.cantidad}</span>
+                          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                            {editandoCotIdx === i ? (
+                              <>
+                                <span className="text-zinc-400">$</span>
+                                <input
+                                  type="number" min="0" step="100"
+                                  value={cotInput}
+                                  onChange={e => setCotInput(e.target.value)}
+                                  className="w-24 border border-zinc-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 text-zinc-700"
+                                  placeholder="costo c/u"
+                                  autoFocus
+                                />
+                                <button type="button" onClick={() => guardarCostoCot(i)} disabled={savingCot} className="text-green-600 hover:text-green-700 disabled:opacity-50">
+                                  {savingCot ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                </button>
+                                <button type="button" onClick={cancelarEdicion} className="text-zinc-400 hover:text-zinc-600">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span>{costoUnit !== null ? formatCLP(r.cantidad * costoUnit) : <span className="text-zinc-300">sin costo</span>}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => { cancelarEdicion(); setEditandoCotIdx(i); setCotInput(String(costoUnit ?? '')); }}
+                                  className="text-zinc-300 hover:text-zinc-500 underline leading-none"
+                                >
+                                  editar
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {costoUnit !== null && (
+                          <p className="text-zinc-300 mt-0.5">{formatCLP(costoUnit)} c/u</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
 
             {/* Horas hombre — editables por horas o por monto */}

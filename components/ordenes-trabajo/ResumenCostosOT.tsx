@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, Loader2, Clock, Package, Wrench, DollarSign, Pencil, Check, X } from "lucide-react";
 
 interface OTRepuesto {
+  id: number;
   cantidad: number;
   precio_costo_snapshot: number;
   precio_venta_snapshot: number;
@@ -50,6 +51,11 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const [repuestos, setRepuestos] = useState<OTRepuesto[]>([]);
   const [valorHora, setValorHora] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Edición inline de costo de repuesto
+  const [editandoRepuesto, setEditandoRepuesto] = useState<number | null>(null); // id de ot_repuesto
+  const [repuestoInput, setRepuestoInput] = useState('');
+  const [savingRepuesto, setSavingRepuesto] = useState(false);
 
   // Horas editables
   const horasAuto = fechaInicio ? horasCalculadas(fechaInicio, fechaFin) : 0;
@@ -151,6 +157,23 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
     }
   }
 
+  async function guardarCostoRepuesto(id: number) {
+    const costo = parseInt(repuestoInput.replace(/\./g, "").replace(",", ""));
+    if (isNaN(costo) || costo < 0) return;
+    setSavingRepuesto(true);
+    try {
+      await fetch(`/api/ot-repuestos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ precio_costo_snapshot: costo }),
+      });
+      setRepuestos(prev => prev.map(r => r.id === id ? { ...r, precio_costo_snapshot: costo } : r));
+      setEditandoRepuesto(null);
+    } finally {
+      setSavingRepuesto(false);
+    }
+  }
+
   function cancelarEdicion() {
     setEditandoHoras(false);
     setHorasInput("");
@@ -158,6 +181,8 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
     setMontoInput("");
     setEditandoTotal(false);
     setTotalInput("");
+    setEditandoRepuesto(null);
+    setRepuestoInput("");
   }
 
   if (loading) {
@@ -260,11 +285,45 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
               <span className="font-medium">{formatCLP(costoRepuestos)}</span>
             </div>
             {repuestos.length > 0 && (
-              <div className="ml-5 space-y-1">
-                {repuestos.map((r, i) => (
-                  <div key={i} className="flex justify-between text-xs text-zinc-400">
-                    <span>{r.nombre} × {r.cantidad}</span>
-                    <span>{formatCLP(r.cantidad * r.precio_costo_snapshot)}</span>
+              <div className="ml-5 space-y-1.5">
+                {repuestos.map((r) => (
+                  <div key={r.id} className="text-xs text-zinc-400">
+                    <div className="flex justify-between items-center">
+                      <span>{r.nombre} × {r.cantidad}</span>
+                      <div className="flex items-center gap-1.5 ml-2">
+                        {editandoRepuesto === r.id ? (
+                          <>
+                            <span className="text-zinc-400">$</span>
+                            <input
+                              type="number" min="0" step="100"
+                              value={repuestoInput}
+                              onChange={e => setRepuestoInput(e.target.value)}
+                              className="w-24 border border-zinc-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 text-zinc-700"
+                              placeholder="costo"
+                              autoFocus
+                            />
+                            <button type="button" onClick={() => guardarCostoRepuesto(r.id)} disabled={savingRepuesto} className="text-green-600 hover:text-green-700 disabled:opacity-50">
+                              {savingRepuesto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                            </button>
+                            <button type="button" onClick={cancelarEdicion} className="text-zinc-400 hover:text-zinc-600">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span>{formatCLP(r.cantidad * r.precio_costo_snapshot)}</span>
+                            <button
+                              type="button"
+                              onClick={() => { setEditandoHoras(false); setEditandoMonto(false); setEditandoTotal(false); setEditandoRepuesto(r.id); setRepuestoInput(String(r.precio_costo_snapshot)); }}
+                              className="text-zinc-300 hover:text-zinc-500 underline leading-none"
+                            >
+                              editar
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-zinc-300 mt-0.5">{formatCLP(r.precio_costo_snapshot)} c/u</p>
                   </div>
                 ))}
               </div>

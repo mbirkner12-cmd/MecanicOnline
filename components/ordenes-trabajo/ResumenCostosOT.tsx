@@ -309,16 +309,17 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
             <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Costos reales</h4>
           </div>
           <div className="space-y-2 text-sm">
-            {/* Repuestos */}
+            {/* Repuestos (inventario + cotización) — sección unificada */}
             <div className="flex justify-between">
               <div className="flex items-center gap-1.5 text-zinc-600">
                 <Package className="h-3.5 w-3.5" />
                 <span>Repuestos (costo)</span>
               </div>
-              <span className="font-medium">{formatCLP(costoRepuestos)}</span>
+              <span className="font-medium">{formatCLP(costoRepuestos + costoRepuestosCotTotal)}</span>
             </div>
-            {repuestos.length > 0 && (
+            {(repuestos.length > 0 || repsCot.length > 0) && (
               <div className="ml-5 space-y-1.5">
+                {/* Inventario */}
                 {repuestos.map((r) => (
                   <div key={r.id} className="text-xs text-zinc-400">
                     <div className="flex justify-between items-center">
@@ -347,7 +348,7 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
                             <span>{formatCLP(r.cantidad * r.precio_costo_snapshot)}</span>
                             <button
                               type="button"
-                              onClick={() => { setEditandoHoras(false); setEditandoMonto(false); setEditandoTotal(false); setEditandoRepuesto(r.id); setRepuestoInput(String(r.precio_costo_snapshot)); }}
+                              onClick={() => { cancelarEdicion(); setEditandoRepuesto(r.id); setRepuestoInput(String(r.precio_costo_snapshot)); }}
                               className="text-zinc-300 hover:text-zinc-500 underline leading-none"
                             >
                               editar
@@ -359,67 +360,53 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
                     <p className="text-zinc-300 mt-0.5">{formatCLP(r.precio_costo_snapshot)} c/u</p>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {/* Repuestos de cotización con costo editable */}
-            {repsCot.length > 0 && (
-              <>
-                <div className="flex justify-between">
-                  <div className="flex items-center gap-1.5 text-zinc-600">
-                    <Package className="h-3.5 w-3.5" />
-                    <span>Repuestos cotizados (costo)</span>
-                  </div>
-                  <span className="font-medium">{formatCLP(costoRepuestosCotTotal)}</span>
-                </div>
-                <div className="ml-5 space-y-1.5">
-                  {repsCot.map((r, i) => {
-                    const costoUnit = costosCot[i] ?? null;
-                    return (
-                      <div key={i} className="text-xs text-zinc-400">
-                        <div className="flex justify-between items-center">
-                          <span className="truncate max-w-[8rem]">{r.detalle} × {r.cantidad}</span>
-                          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                            {editandoCotIdx === i ? (
-                              <>
-                                <span className="text-zinc-400">$</span>
-                                <input
-                                  type="number" min="0" step="100"
-                                  value={cotInput}
-                                  onChange={e => setCotInput(e.target.value)}
-                                  className="w-24 border border-zinc-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 text-zinc-700"
-                                  placeholder="costo c/u"
-                                  autoFocus
-                                />
-                                <button type="button" onClick={() => guardarCostoCot(i)} disabled={savingCot} className="text-green-600 hover:text-green-700 disabled:opacity-50">
-                                  {savingCot ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                                </button>
-                                <button type="button" onClick={cancelarEdicion} className="text-zinc-400 hover:text-zinc-600">
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <span>{costoUnit !== null ? formatCLP(r.cantidad * costoUnit) : <span className="text-zinc-300">sin costo</span>}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => { cancelarEdicion(); setEditandoCotIdx(i); setCotInput(String(costoUnit ?? '')); }}
-                                  className="text-zinc-300 hover:text-zinc-500 underline leading-none"
-                                >
-                                  editar
-                                </button>
-                              </>
-                            )}
-                          </div>
+                {/* Cotización */}
+                {repsCot.map((r, i) => {
+                  const costoUnit = costosCot[i] ?? null;
+                  return (
+                    <div key={`cot-${i}`} className="text-xs text-zinc-400">
+                      <div className="flex justify-between items-center">
+                        <span className="truncate max-w-[8rem]">{r.detalle} × {r.cantidad}</span>
+                        <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                          {editandoCotIdx === i ? (
+                            <>
+                              <span className="text-zinc-400">$</span>
+                              <input
+                                type="number" min="0" step="100"
+                                value={cotInput}
+                                onChange={e => setCotInput(e.target.value)}
+                                className="w-24 border border-zinc-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900 text-zinc-700"
+                                placeholder="costo c/u"
+                                autoFocus
+                              />
+                              <button type="button" onClick={() => guardarCostoCot(i)} disabled={savingCot} className="text-green-600 hover:text-green-700 disabled:opacity-50">
+                                {savingCot ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                              </button>
+                              <button type="button" onClick={cancelarEdicion} className="text-zinc-400 hover:text-zinc-600">
+                                <X className="h-3 w-3" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span>{costoUnit !== null ? formatCLP(r.cantidad * costoUnit) : <span className="text-zinc-300">sin costo</span>}</span>
+                              <button
+                                type="button"
+                                onClick={() => { cancelarEdicion(); setEditandoCotIdx(i); setCotInput(String(costoUnit ?? '')); }}
+                                className="text-zinc-300 hover:text-zinc-500 underline leading-none"
+                              >
+                                editar
+                              </button>
+                            </>
+                          )}
                         </div>
-                        {costoUnit !== null && (
-                          <p className="text-zinc-300 mt-0.5">{formatCLP(costoUnit)} c/u</p>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              </>
+                      {costoUnit !== null && (
+                        <p className="text-zinc-300 mt-0.5">{formatCLP(costoUnit)} c/u</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
 
             {/* Horas hombre — editables por horas o por monto */}

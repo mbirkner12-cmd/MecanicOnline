@@ -28,6 +28,7 @@ interface Props {
   costoMoDetalle?: string | null;
   costoTotalOverride?: number | null;
   costoRepuestosCot?: string | null;
+  costoRepuestosOverride?: number | null;
 }
 
 function formatCLP(n: number) {
@@ -48,7 +49,7 @@ function formatHoras(h: number) {
   return `${hh}h ${mm}min`;
 }
 
-export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle, costoTotalOverride, costoRepuestosCot }: Props) {
+export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle, costoTotalOverride, costoRepuestosCot, costoRepuestosOverride }: Props) {
   const [repuestos, setRepuestos] = useState<OTRepuesto[]>([]);
   const [valorHora, setValorHora] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -84,6 +85,12 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const [totalInput, setTotalInput] = useState<string>("");
   const [totalGuardado, setTotalGuardado] = useState<number | null>(costoTotalOverride ?? null);
   const [savingTotal, setSavingTotal] = useState(false);
+
+  // Override total repuestos
+  const [editandoRepuestosTotal, setEditandoRepuestosTotal] = useState(false);
+  const [repuestosTotalInput, setRepuestosTotalInput] = useState<string>("");
+  const [repuestosTotalGuardado, setRepuestosTotalGuardado] = useState<number | null>(costoRepuestosOverride ?? null);
+  const [savingRepuestosTotal, setSavingRepuestosTotal] = useState(false);
 
   const horasEfectivas = horasGuardadas ?? horasAuto;
 
@@ -151,6 +158,38 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
     }
   }
 
+  async function guardarRepuestosTotal() {
+    const t = parseInt(repuestosTotalInput.replace(/\./g, "").replace(",", ""));
+    if (isNaN(t) || t < 0) return;
+    setSavingRepuestosTotal(true);
+    try {
+      await fetch(`/api/ordenes-trabajo/${otId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ costo_repuestos_override: t }),
+      });
+      setRepuestosTotalGuardado(t);
+      setEditandoRepuestosTotal(false);
+    } finally {
+      setSavingRepuestosTotal(false);
+    }
+  }
+
+  async function limpiarRepuestosTotal() {
+    setSavingRepuestosTotal(true);
+    try {
+      await fetch(`/api/ordenes-trabajo/${otId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ costo_repuestos_override: null }),
+      });
+      setRepuestosTotalGuardado(null);
+      setEditandoRepuestosTotal(false);
+    } finally {
+      setSavingRepuestosTotal(false);
+    }
+  }
+
   async function limpiarTotal() {
     setSavingTotal(true);
     try {
@@ -214,6 +253,8 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
     setRepuestoInput("");
     setEditandoCotIdx(null);
     setCotInput("");
+    setEditandoRepuestosTotal(false);
+    setRepuestosTotalInput("");
   }
 
   if (loading) {
@@ -235,8 +276,10 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const repsCot = (() => { try { return JSON.parse(cotizacion?.repuestos ?? "[]") as Array<{ detalle: string; cantidad: number; unidad: string; valor_unitario: number }>; } catch { return []; } })();
   const costoRepuestos = repuestos.reduce((s, r) => s + r.cantidad * r.precio_costo_snapshot, 0);
   const costoRepuestosCotTotal = repsCot.reduce((s, r, i) => s + r.cantidad * (costosCot[i] ?? 0), 0);
+  const costoRepuestosCalculado = costoRepuestos + costoRepuestosCotTotal;
+  const costoRepuestosEfectivo = repuestosTotalGuardado !== null ? repuestosTotalGuardado : costoRepuestosCalculado;
   const costoMoObra = montoGuardado !== null ? montoGuardado : horasEfectivas * valorHora;
-  const totalCostosCalculado = costoRepuestos + costoRepuestosCotTotal + costoMoObra;
+  const totalCostosCalculado = costoRepuestosEfectivo + costoMoObra;
   // Total override tiene precedencia sobre el calculado
   const totalCostos = totalGuardado !== null ? totalGuardado : totalCostosCalculado;
 
@@ -310,12 +353,57 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
           </div>
           <div className="space-y-2 text-sm">
             {/* Repuestos (inventario + cotización) — sección unificada */}
-            <div className="flex justify-between">
+            <div className="flex justify-between items-start">
               <div className="flex items-center gap-1.5 text-zinc-600">
                 <Package className="h-3.5 w-3.5" />
                 <span>Repuestos (costo)</span>
               </div>
-              <span className="font-medium">{formatCLP(costoRepuestos + costoRepuestosCotTotal)}</span>
+              <span className="font-medium">{formatCLP(costoRepuestosEfectivo)}</span>
+            </div>
+            {/* Override total repuestos */}
+            <div className="ml-5 pt-0.5">
+              {!editandoRepuestosTotal ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {repuestosTotalGuardado !== null && (
+                    <span className="text-xs text-blue-500">(total manual: {formatCLP(repuestosTotalGuardado)})</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { cancelarEdicion(); setEditandoRepuestosTotal(true); setRepuestosTotalInput(String(Math.round(costoRepuestosEfectivo))); }}
+                    className="text-xs text-zinc-400 hover:text-zinc-700 underline"
+                  >
+                    {repuestosTotalGuardado !== null ? "editar total" : "ingresar total manual"}
+                  </button>
+                  {repuestosTotalGuardado !== null && (
+                    <button
+                      type="button"
+                      onClick={limpiarRepuestosTotal}
+                      disabled={savingRepuestosTotal}
+                      className="text-xs text-red-400 hover:text-red-600 underline disabled:opacity-50"
+                    >
+                      quitar
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-zinc-400">$</span>
+                  <input
+                    type="number" min="0" step="100"
+                    value={repuestosTotalInput}
+                    onChange={e => setRepuestosTotalInput(e.target.value)}
+                    className="w-28 border border-zinc-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    placeholder="total"
+                    autoFocus
+                  />
+                  <button type="button" onClick={guardarRepuestosTotal} disabled={savingRepuestosTotal} className="text-green-600 hover:text-green-700 disabled:opacity-50">
+                    {savingRepuestosTotal ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                  </button>
+                  <button type="button" onClick={cancelarEdicion} className="text-zinc-400 hover:text-zinc-600">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
             {(repuestos.length > 0 || repsCot.length > 0) && (
               <div className="ml-5 space-y-1.5">

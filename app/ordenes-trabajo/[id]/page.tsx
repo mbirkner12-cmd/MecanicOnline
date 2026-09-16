@@ -45,6 +45,7 @@ interface OTDetalle {
   costo_mo_detalle: string | null;
   costo_total_override: number | null;
   costo_repuestos_cot: string | null;
+  costo_repuestos_override: number | null;
   metodo_pago: string | null;
   pagado: boolean;
   estado: EstadoOT;
@@ -833,6 +834,7 @@ export default function OTDetallePage() {
                 costoMoDetalle={ot.costo_mo_detalle}
                 costoTotalOverride={ot.costo_total_override}
                 costoRepuestosCot={ot.costo_repuestos_cot}
+                costoRepuestosOverride={ot.costo_repuestos_override}
               />
             </CardContent>
           </Card>

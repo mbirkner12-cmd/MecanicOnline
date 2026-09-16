@@ -48,6 +48,7 @@ async function getOTById(id: number) {
       costo_mo_detalle: ordenes_trabajo.costo_mo_detalle,
       costo_total_override: ordenes_trabajo.costo_total_override,
       costo_repuestos_cot: ordenes_trabajo.costo_repuestos_cot,
+      costo_repuestos_override: ordenes_trabajo.costo_repuestos_override,
       metodo_pago: ordenes_trabajo.metodo_pago,
       pagado: ordenes_trabajo.pagado,
       boleta_creada: ordenes_trabajo.boleta_creada,
@@ -170,6 +171,7 @@ export async function PUT(
       costo_mo_detalle?: string | null;
       costo_total_override?: number | null;
       costo_repuestos_cot?: number[] | null;
+      costo_repuestos_override?: number | null;
       metodo_pago?: string | null;
       pagado?: boolean;
       boleta_creada?: boolean;
@@ -254,6 +256,9 @@ export async function PUT(
     }
     if (body.costo_repuestos_cot !== undefined) {
       updateFields.costo_repuestos_cot = body.costo_repuestos_cot === null ? null : JSON.stringify(body.costo_repuestos_cot);
+    }
+    if (body.costo_repuestos_override !== undefined) {
+      updateFields.costo_repuestos_override = body.costo_repuestos_override;
     }
     if (body.estado !== undefined) {
       updateFields.estado = body.estado;

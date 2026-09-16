@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Eye, FileText } from "lucide-react";
+import { Plus, Eye, FileText, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -36,6 +36,8 @@ interface CotizacionRow {
   estado: EstadoCotizacion;
   created_at: string;
   updated_at: string;
+  ot_id: number | null;
+  ot_numero: string | null;
   vehiculo: {
     id: number;
     patente: string;
@@ -248,6 +250,18 @@ export default function CotizacionesPage() {
                       >
                         <FileText className="size-4" />
                       </a>
+
+                      {/* OT asociada */}
+                      {cot.ot_id && cot.ot_numero && (
+                        <Link
+                          href={`/ordenes-trabajo/${cot.ot_id}`}
+                          className="inline-flex items-center gap-1 px-2 h-7 rounded-[min(var(--radius-md),12px)] text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                          title={`Ir a ${cot.ot_numero}`}
+                        >
+                          <Wrench className="size-3" />
+                          {cot.ot_numero}
+                        </Link>
+                      )}
 
                       {/* Aceptar / Rechazar — solo si pendiente */}
                       {cot.estado === "pendiente" && (

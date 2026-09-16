@@ -5,6 +5,7 @@ import {
   vehiculos,
   clientes,
   recepciones,
+  ordenes_trabajo,
 } from '@/lib/db/schema';
 import { eq, desc, max, sql } from 'drizzle-orm';
 
@@ -49,11 +50,14 @@ export async function GET() {
           fecha_hora_ingreso: recepciones.fecha_hora_ingreso,
           diagnostico_mecanico: recepciones.diagnostico_mecanico,
         },
+        ot_id: ordenes_trabajo.id,
+        ot_numero: ordenes_trabajo.numero,
       })
       .from(cotizaciones)
       .leftJoin(vehiculos, eq(cotizaciones.vehiculo_id, vehiculos.id))
       .leftJoin(clientes, eq(cotizaciones.cliente_id, clientes.id))
       .leftJoin(recepciones, eq(cotizaciones.recepcion_id, recepciones.id))
+      .leftJoin(ordenes_trabajo, eq(ordenes_trabajo.cotizacion_id, cotizaciones.id))
       .orderBy(desc(cotizaciones.created_at));
 
     return NextResponse.json(result);

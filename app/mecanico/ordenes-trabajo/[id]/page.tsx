@@ -123,7 +123,6 @@ export default function MecanicoOTDetallePage() {
   const [terminarDialogOpen, setTerminarDialogOpen] = useState(false);
   const [costoMOInput, setCostoMOInput] = useState('');
   const [costoMODetalle, setCostoMODetalle] = useState('');
-  const [costoTotalInput, setCostoTotalInput] = useState('');
 
   const fetchOT = async () => {
     setLoading(true);
@@ -175,7 +174,6 @@ export default function MecanicoOTDetallePage() {
     setAccionLoading(true);
     try {
       const monto = parseInt(costoMOInput.replace(/\D/g, '')) || 0;
-      const total = parseInt(costoTotalInput.replace(/\D/g, '')) || 0;
       await fetch(`/api/ordenes-trabajo/${ot.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -183,7 +181,6 @@ export default function MecanicoOTDetallePage() {
           estado: 'listo_para_entregar',
           costo_mo_override: monto > 0 ? monto : null,
           costo_mo_detalle: costoMODetalle.trim() || null,
-          costo_total_override: total > 0 ? total : null,
         }),
       });
       setTerminarDialogOpen(false);
@@ -316,7 +313,7 @@ export default function MecanicoOTDetallePage() {
           {ot.estado === 'en_reparacion' && (
             <div className="flex flex-col items-end gap-1">
               <Button
-                onClick={() => { setCostoMOInput(''); setCostoMODetalle(''); setCostoTotalInput(''); setTerminarDialogOpen(true); }}
+                onClick={() => { setCostoMOInput(''); setCostoMODetalle(''); setTerminarDialogOpen(true); }}
                 disabled={accionLoading || !canTerminar}
                 className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
               >
@@ -699,22 +696,6 @@ export default function MecanicoOTDetallePage() {
                 value={costoMODetalle}
                 onChange={e => setCostoMODetalle(e.target.value)}
               />
-            </div>
-            <div>
-              <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Costo total manual (opcional)</label>
-              <p className="text-xs text-zinc-400 mb-1.5">Si querés registrar el costo total de la OT directamente, sin calcular por componentes.</p>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  className="w-full border border-zinc-300 rounded-lg pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                  placeholder="0"
-                  value={costoTotalInput}
-                  onChange={e => setCostoTotalInput(e.target.value)}
-                />
-              </div>
             </div>
             <div className="flex gap-2 pt-1">
               <Button

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, Loader2, Clock, Package, Wrench, DollarSign, Pencil, Check, X } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Loader2, Clock, Package, Wrench, DollarSign, Pencil, Check, X, Upload, Trash2 } from "lucide-react";
+import { SubirFacturaOT } from "./SubirFacturaOT";
 
 interface OTRepuesto {
   id: number;
@@ -11,6 +12,14 @@ interface OTRepuesto {
   nombre: string;
   sku: string;
   unidad: string;
+}
+
+interface FacturaItem {
+  id: number;
+  numero: string;
+  proveedor_nombre: string;
+  total: number;
+  pdf_url: string | null;
 }
 
 interface Props {
@@ -51,6 +60,7 @@ function formatHoras(h: number) {
 
 export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle, costoTotalOverride, costoRepuestosCot, costoRepuestosOverride }: Props) {
   const [repuestos, setRepuestos] = useState<OTRepuesto[]>([]);
+  const [facturas, setFacturas] = useState<FacturaItem[]>([]);
   const [valorHora, setValorHora] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -98,12 +108,28 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
     Promise.all([
       fetch(`/api/ot-repuestos?ot_id=${otId}`).then(r => r.json()),
       fetch("/api/configuracion").then(r => r.json()),
-    ]).then(([reps, config]: [OTRepuesto[], Record<string, string>]) => {
+      fetch(`/api/facturas-compra?ot_id=${otId}`).then(r => r.json()),
+    ]).then(([reps, config, facts]: [OTRepuesto[], Record<string, string>, FacturaItem[]]) => {
       setRepuestos(reps);
       setValorHora(parseInt(config.valor_hora ?? "0") || 0);
+      setFacturas(facts);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [otId]);
+
+  async function recargarRepuestosYFacturas() {
+    const [reps, facts] = await Promise.all([
+      fetch(`/api/ot-repuestos?ot_id=${otId}`).then(r => r.json() as Promise<OTRepuesto[]>),
+      fetch(`/api/facturas-compra?ot_id=${otId}`).then(r => r.json() as Promise<FacturaItem[]>),
+    ]);
+    setRepuestos(reps);
+    setFacturas(facts);
+  }
+
+  async function eliminarFactura(id: number) {
+    await fetch(`/api/facturas-compra/${id}`, { method: 'DELETE' });
+    setFacturas(prev => prev.filter(f => f.id !== id));
+  }
 
   async function guardarHoras() {
     const h = parseFloat(horasInput.replace(",", "."));
@@ -496,6 +522,34 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
                 })}
               </div>
             )}
+
+            {/* Facturas de compra */}
+            <div className="pt-1">
+              <SubirFacturaOT
+                otId={otId}
+                repuestosInventario={repuestos.map(r => ({ id: r.id, nombre: r.nombre, sku: r.sku }))}
+                repuestesCot={repsCot.map((r, i) => ({ detalle: r.detalle, idx: i }))}
+                onGuardado={recargarRepuestosYFacturas}
+              />
+              {facturas.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {facturas.map(f => (
+                    <div key={f.id} className="flex items-center justify-between text-xs text-zinc-500">
+                      <span className="truncate">
+                        Factura #{f.numero} — {f.proveedor_nombre} — {formatCLP(f.total)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => eliminarFactura(f.id)}
+                        className="ml-2 flex-shrink-0 p-0.5 rounded hover:bg-red-50 text-zinc-300 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Horas hombre — editables por horas o por monto */}
             <div className="flex justify-between items-start">

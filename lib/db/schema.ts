@@ -230,6 +230,7 @@ export const facturas_compra = sqliteTable('facturas_compra', {
   total: real('total').notNull().default(0),
   pdf_url: text('pdf_url'),
   items: text('items').notNull().default('[]'),
+  ot_id: integer('ot_id').references(() => ordenes_trabajo.id),
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

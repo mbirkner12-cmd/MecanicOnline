@@ -26,6 +26,7 @@ interface FacturaItem {
   id: number;
   numero: string;
   proveedor_nombre: string;
+  total_neto: number;
   total: number;
   pdf_url: string | null;
   items: string; // JSON string
@@ -316,12 +317,16 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const repsCot = (() => { try { return JSON.parse(cotizacion?.repuestos ?? "[]") as Array<{ detalle: string; cantidad: number; unidad: string; valor_unitario: number }>; } catch { return []; } })();
   const costoRepuestos = repuestos.reduce((s, r) => s + r.cantidad * r.precio_costo_snapshot, 0);
   const costoRepuestosCotTotal = repsCot.reduce((s, r, i) => s + r.cantidad * (costosCot[i] ?? 0), 0);
-  // Ítems de facturas que no fueron asignados a ningún repuesto (no se cuentan en ningún otro lado)
+  // Costo de facturas no asignado a repuestos específicos:
+  // tomamos total_neto de la factura y restamos lo que ya fue acreditado a repuestos puntuales via match_key
   const costoFacturasNoAsignadas = facturas.reduce((sum, f) => {
     try {
       const lines = JSON.parse(f.items) as FacturaItemLine[];
-      return sum + lines.filter(l => !l.match_key).reduce((s, l) => s + (l.total || l.cantidad * l.precio_unitario), 0);
-    } catch { return sum; }
+      const costoAsignado = lines
+        .filter(l => l.match_key)
+        .reduce((s, l) => s + (l.total || l.cantidad * l.precio_unitario), 0);
+      return sum + Math.max(0, (f.total_neto ?? 0) - costoAsignado);
+    } catch { return sum + (f.total_neto ?? 0); }
   }, 0);
   const costoRepuestosCalculado = costoRepuestos + costoRepuestosCotTotal + costoFacturasNoAsignadas;
   const costoRepuestosEfectivo = repuestosTotalGuardado !== null ? repuestosTotalGuardado : costoRepuestosCalculado;
@@ -471,7 +476,7 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
                 </div>
               )}
             </div>
-            {(repuestos.length > 0 || repsCot.length > 0) && (
+            {(repuestos.length > 0 || repsCot.length > 0 || costoFacturasNoAsignadas > 0) && (
               <div className="ml-5 space-y-1.5">
                 {/* Inventario */}
                 {repuestos.map((r) => (
@@ -560,6 +565,15 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
                     </div>
                   );
                 })}
+                {/* Facturas sin asignar a repuesto específico */}
+                {costoFacturasNoAsignadas > 0 && (
+                  <div className="text-xs text-zinc-400">
+                    <div className="flex justify-between items-center">
+                      <span>Facturas (sin asignar)</span>
+                      <span>{formatCLP(costoFacturasNoAsignadas)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

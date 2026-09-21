@@ -14,12 +14,21 @@ interface OTRepuesto {
   unidad: string;
 }
 
+interface FacturaItemLine {
+  nombre: string;
+  cantidad: number;
+  precio_unitario: number;
+  total: number;
+  match_key: string | null;
+}
+
 interface FacturaItem {
   id: number;
   numero: string;
   proveedor_nombre: string;
   total: number;
   pdf_url: string | null;
+  items: string; // JSON string
 }
 
 interface Props {
@@ -302,7 +311,14 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const repsCot = (() => { try { return JSON.parse(cotizacion?.repuestos ?? "[]") as Array<{ detalle: string; cantidad: number; unidad: string; valor_unitario: number }>; } catch { return []; } })();
   const costoRepuestos = repuestos.reduce((s, r) => s + r.cantidad * r.precio_costo_snapshot, 0);
   const costoRepuestosCotTotal = repsCot.reduce((s, r, i) => s + r.cantidad * (costosCot[i] ?? 0), 0);
-  const costoRepuestosCalculado = costoRepuestos + costoRepuestosCotTotal;
+  // Ítems de facturas que no fueron asignados a ningún repuesto (no se cuentan en ningún otro lado)
+  const costoFacturasNoAsignadas = facturas.reduce((sum, f) => {
+    try {
+      const lines = JSON.parse(f.items) as FacturaItemLine[];
+      return sum + lines.filter(l => !l.match_key).reduce((s, l) => s + (l.total || l.cantidad * l.precio_unitario), 0);
+    } catch { return sum; }
+  }, 0);
+  const costoRepuestosCalculado = costoRepuestos + costoRepuestosCotTotal + costoFacturasNoAsignadas;
   const costoRepuestosEfectivo = repuestosTotalGuardado !== null ? repuestosTotalGuardado : costoRepuestosCalculado;
   const costoMoObra = montoGuardado !== null ? montoGuardado : horasEfectivas * valorHora;
   const totalCostosCalculado = costoRepuestosEfectivo + costoMoObra;

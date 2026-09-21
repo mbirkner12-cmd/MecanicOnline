@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
       total_iva: facturas_compra.total_iva,
       total: facturas_compra.total,
       pdf_url: facturas_compra.pdf_url,
+      items: facturas_compra.items,
       ot_id: facturas_compra.ot_id,
       created_at: facturas_compra.created_at,
     })

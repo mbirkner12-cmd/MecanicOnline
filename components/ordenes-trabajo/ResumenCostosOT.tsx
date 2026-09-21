@@ -326,8 +326,11 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const totalCostos = totalGuardado !== null ? totalGuardado : totalCostosCalculado;
 
   // ── Resultado ───────────────────────────────────────────────────────────────
+  // IVA solo aplica a repuestos (compra con factura), no a mano de obra (costo salarial)
+  const ivaRepuestosCosto = costoRepuestosEfectivo * 0.19;
+  const totalCostosConIVA = costoRepuestosEfectivo * 1.19 + costoMoObra;
   const gananciaNeta = totalCobrado - totalCostos;
-  const gananciaBruta = totalCobrado * 1.19 - totalCostos * 1.19;
+  const gananciaBruta = totalCobrado * 1.19 - totalCostosConIVA;
   const margenNeto = totalCobrado > 0 ? (gananciaNeta / totalCobrado) * 100 : 0;
 
   const MargenIcon = gananciaNeta > 0 ? TrendingUp : gananciaNeta < 0 ? TrendingDown : Minus;
@@ -672,12 +675,12 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
               <span className="text-red-600">{formatCLP(totalCostos)}</span>
             </div>
             <div className="flex justify-between text-zinc-400 text-xs">
-              <span>IVA 19%</span>
-              <span>{formatCLP(totalCostos * 0.19)}</span>
+              <span>IVA 19% (solo repuestos)</span>
+              <span>{formatCLP(ivaRepuestosCosto)}</span>
             </div>
             <div className="flex justify-between text-xs font-semibold text-zinc-600">
               <span>Total costos con IVA</span>
-              <span>{formatCLP(totalCostos * 1.19)}</span>
+              <span>{formatCLP(totalCostosConIVA)}</span>
             </div>
 
             {/* Total manual override */}

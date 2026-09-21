@@ -326,27 +326,40 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const totalCostos = totalGuardado !== null ? totalGuardado : totalCostosCalculado;
 
   // ── Resultado ───────────────────────────────────────────────────────────────
-  const ganancia = totalCobrado - totalCostos;
-  const margen = totalCobrado > 0 ? (ganancia / totalCobrado) * 100 : 0;
+  const gananciaNeta = totalCobrado - totalCostos;
+  const gananciaBruta = totalCobrado * 1.19 - totalCostos * 1.19;
+  const margenNeto = totalCobrado > 0 ? (gananciaNeta / totalCobrado) * 100 : 0;
 
-  const MargenIcon = ganancia > 0 ? TrendingUp : ganancia < 0 ? TrendingDown : Minus;
-  const margenColor = ganancia > 0 ? "text-green-600" : ganancia < 0 ? "text-red-600" : "text-zinc-500";
-  const margenBg = ganancia > 0 ? "bg-green-50 border-green-200" : ganancia < 0 ? "bg-red-50 border-red-200" : "bg-zinc-50 border-zinc-200";
+  const MargenIcon = gananciaNeta > 0 ? TrendingUp : gananciaNeta < 0 ? TrendingDown : Minus;
+  const margenColor = gananciaNeta > 0 ? "text-green-600" : gananciaNeta < 0 ? "text-red-600" : "text-zinc-500";
+  const margenBg = gananciaNeta > 0 ? "bg-green-50 border-green-200" : gananciaNeta < 0 ? "bg-red-50 border-red-200" : "bg-zinc-50 border-zinc-200";
 
   return (
     <div className="space-y-4">
       {/* Resultado destacado */}
-      <div className={`flex items-center justify-between p-4 rounded-xl border ${margenBg}`}>
-        <div className="flex items-center gap-3">
-          <MargenIcon className={`h-6 w-6 ${margenColor}`} />
-          <div>
-            <p className="text-xs text-zinc-500 font-medium">Ganancia neta</p>
-            <p className={`text-2xl font-bold ${margenColor}`}>{formatCLP(ganancia)}</p>
+      <div className={`p-4 rounded-xl border ${margenBg}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MargenIcon className={`h-6 w-6 ${margenColor}`} />
+            <div>
+              <p className="text-xs text-zinc-500 font-medium">Ganancia neta (sin IVA)</p>
+              <p className={`text-2xl font-bold ${margenColor}`}>{formatCLP(gananciaNeta)}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-zinc-500 font-medium">Margen neto</p>
+            <p className={`text-2xl font-bold ${margenColor}`}>{margenNeto.toFixed(1)}%</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-zinc-500 font-medium">Margen</p>
-          <p className={`text-2xl font-bold ${margenColor}`}>{margen.toFixed(1)}%</p>
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-current border-opacity-10">
+          <div>
+            <p className="text-xs text-zinc-500 font-medium">Ganancia bruta (con IVA)</p>
+            <p className={`text-lg font-semibold ${margenColor}`}>{formatCLP(gananciaBruta)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-zinc-500 font-medium">Cobrado bruto</p>
+            <p className="text-lg font-semibold text-zinc-700">{formatCLP(totalCobrado * 1.19)}</p>
+          </div>
         </div>
       </div>
 
@@ -355,7 +368,7 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-zinc-400" />
-            <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Cobrado al cliente (neto)</h4>
+            <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Cobrado al cliente</h4>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -392,6 +405,7 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
           <div className="flex items-center gap-2">
             <Wrench className="h-4 w-4 text-zinc-400" />
             <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Costos reales</h4>
+
           </div>
           <div className="space-y-2 text-sm">
             {/* Repuestos (inventario + cotización) — sección unificada */}
@@ -654,8 +668,16 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
             </div>
 
             <div className="flex justify-between items-center border-t border-zinc-200 pt-2 font-semibold">
-              <span className="text-zinc-800">Total costos</span>
+              <span className="text-zinc-800">Total costos neto</span>
               <span className="text-red-600">{formatCLP(totalCostos)}</span>
+            </div>
+            <div className="flex justify-between text-zinc-400 text-xs">
+              <span>IVA 19%</span>
+              <span>{formatCLP(totalCostos * 0.19)}</span>
+            </div>
+            <div className="flex justify-between text-xs font-semibold text-zinc-600">
+              <span>Total costos con IVA</span>
+              <span>{formatCLP(totalCostos * 1.19)}</span>
             </div>
 
             {/* Total manual override */}

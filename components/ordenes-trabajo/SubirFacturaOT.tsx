@@ -322,12 +322,12 @@ export function SubirFacturaOT({ otId, repuestosInventario, repuestesCot, onGuar
 
         {/* Step 3: Confirm */}
         {step === 3 && (
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="max-w-4xl flex flex-col max-h-[90vh]">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>Confirmar datos de factura</DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-5 py-2">
+            <div className="space-y-5 py-2 overflow-y-auto flex-1">
               {/* Header fields */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
@@ -495,10 +495,17 @@ export function SubirFacturaOT({ otId, repuestosInventario, repuestesCot, onGuar
               )}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex-shrink-0 border-t border-zinc-100 pt-4 mt-2">
               <button
                 type="button"
-                onClick={() => { setStep(1); }}
+                onClick={() => handleOpenChange(false)}
+                className="px-4 py-2 text-sm text-zinc-600 border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
                 className="px-4 py-2 text-sm text-zinc-600 border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors"
               >
                 Volver

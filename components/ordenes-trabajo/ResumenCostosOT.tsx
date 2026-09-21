@@ -331,11 +331,13 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const totalCostos = totalGuardado !== null ? totalGuardado : totalCostosCalculado;
 
   // ── Resultado ───────────────────────────────────────────────────────────────
-  // IVA solo aplica a repuestos (compra con factura), no a mano de obra (costo salarial)
+  // IVA solo aplica a repuestos, no a mano de obra (ni en ingresos ni en costos)
+  const ivaRepuestosIngreso = repuestosCotizados * 0.19;
+  const totalCobradoConIVA = totalCobrado + ivaRepuestosIngreso;
   const ivaRepuestosCosto = costoRepuestosEfectivo * 0.19;
   const totalCostosConIVA = costoRepuestosEfectivo * 1.19 + costoMoObra;
   const gananciaNeta = totalCobrado - totalCostos;
-  const gananciaBruta = totalCobrado * 1.19 - totalCostosConIVA;
+  const gananciaBruta = totalCobradoConIVA - totalCostosConIVA;
   const margenNeto = totalCobrado > 0 ? (gananciaNeta / totalCobrado) * 100 : 0;
 
   const MargenIcon = gananciaNeta > 0 ? TrendingUp : gananciaNeta < 0 ? TrendingDown : Minus;
@@ -366,7 +368,7 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
           </div>
           <div className="text-right">
             <p className="text-xs text-zinc-500 font-medium">Cobrado bruto</p>
-            <p className="text-lg font-semibold text-zinc-700">{formatCLP(totalCobrado * 1.19)}</p>
+            <p className="text-lg font-semibold text-zinc-700">{formatCLP(totalCobradoConIVA)}</p>
           </div>
         </div>
       </div>
@@ -398,12 +400,12 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
               <span>{formatCLP(totalCobrado)}</span>
             </div>
             <div className="flex justify-between text-zinc-400 text-xs">
-              <span>IVA 19%</span>
-              <span>{formatCLP(totalCobrado * 0.19)}</span>
+              <span>IVA 19% (solo repuestos)</span>
+              <span>{formatCLP(ivaRepuestosIngreso)}</span>
             </div>
             <div className="flex justify-between text-xs font-semibold text-zinc-600">
               <span>Total con IVA</span>
-              <span>{formatCLP(totalCobrado * 1.19)}</span>
+              <span>{formatCLP(totalCobradoConIVA)}</span>
             </div>
           </div>
         </div>

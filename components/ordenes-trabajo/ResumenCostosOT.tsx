@@ -127,12 +127,17 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   }, [otId]);
 
   async function recargarRepuestosYFacturas() {
-    const [reps, facts] = await Promise.all([
+    const [reps, facts, otData] = await Promise.all([
       fetch(`/api/ot-repuestos?ot_id=${otId}`).then(r => r.json() as Promise<OTRepuesto[]>),
       fetch(`/api/facturas-compra?ot_id=${otId}`).then(r => r.json() as Promise<FacturaItem[]>),
+      fetch(`/api/ordenes-trabajo/${otId}`).then(r => r.json() as Promise<{ costo_repuestos_cot: string | null }>),
     ]);
     setRepuestos(reps);
     setFacturas(facts);
+    try {
+      const parsed = JSON.parse(otData?.costo_repuestos_cot ?? 'null') as (number | null)[] | null;
+      setCostosCot(parsed ?? []);
+    } catch { /* keep existing */ }
   }
 
   async function eliminarFactura(id: number) {

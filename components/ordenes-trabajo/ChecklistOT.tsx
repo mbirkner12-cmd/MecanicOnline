@@ -40,8 +40,9 @@ export function ChecklistOT({ otId, editable }: Props) {
 
   useEffect(() => {
     fetch(`/api/ordenes-trabajo/${otId}/checklist`)
-      .then(r => r.json() as Promise<ChecklistRow[]>)
-      .then(setRows)
+      .then(r => r.ok ? r.json() as Promise<ChecklistRow[]> : Promise.resolve([]))
+      .then(data => setRows(Array.isArray(data) ? data : []))
+      .catch(() => setRows([]))
       .finally(() => setLoading(false));
   }, [otId]);
 
@@ -64,8 +65,10 @@ export function ChecklistOT({ otId, editable }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item_key: key, checked: newChecked }),
       });
-      const updated = await res.json() as ChecklistRow;
-      setRows(prev => prev.map(r => r.item_key === key ? updated : r));
+      if (res.ok) {
+        const updated = await res.json() as ChecklistRow;
+        setRows(prev => prev.map(r => r.item_key === key ? updated : r));
+      }
     } catch {
       // revert on error
       setRows(prev => prev.map(r => r.item_key === key ? { ...r, checked: !newChecked } : r));
@@ -99,12 +102,14 @@ export function ChecklistOT({ otId, editable }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item_key: key, foto_url: url }),
       });
-      const updated = await res.json() as ChecklistRow;
-      setRows(prev => {
-        const exists = prev.find(r => r.item_key === key);
-        if (exists) return prev.map(r => r.item_key === key ? updated : r);
-        return [...prev, updated];
-      });
+      if (res.ok) {
+        const updated = await res.json() as ChecklistRow;
+        setRows(prev => {
+          const exists = prev.find(r => r.item_key === key);
+          if (exists) return prev.map(r => r.item_key === key ? updated : r);
+          return [...prev, updated];
+        });
+      }
     } catch {
       // silent — photo not uploaded
     } finally {

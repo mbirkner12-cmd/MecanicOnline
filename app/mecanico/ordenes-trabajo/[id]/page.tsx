@@ -16,6 +16,7 @@ import { ArrowLeft, Car, User, Wrench, Calendar, FileText, Package, ClipboardLis
 import { GastosOT } from '@/components/ordenes-trabajo/GastosOT';
 import { RepuestosInventarioOT } from '@/components/ordenes-trabajo/RepuestosInventarioOT';
 import { DiagnosticoDisplay } from '@/components/diagnostico/DiagnosticoDisplay';
+import { ChecklistOT } from '@/components/ordenes-trabajo/ChecklistOT';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormRecepcion, type FormRecepcionValues } from '@/components/recepcion/FormRecepcion';
 
@@ -661,42 +662,56 @@ export default function MecanicoOTDetallePage() {
         editable={ot.estado === 'en_reparacion'}
       />
 
-      {/* Dialog Terminar OT — costo mano de obra */}
+      {/* Dialog Terminar OT — checklist + costo mano de obra */}
       <Dialog open={terminarDialogOpen} onOpenChange={(o) => { if (!o) setTerminarDialogOpen(false); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>¿Cuánto cobrás por esta OT?</DialogTitle>
+            <DialogTitle>Terminar OT — {ot.numero}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-1">
-            <p className="text-sm text-zinc-500">
-              Ingresá el monto y un breve detalle de lo que cobraste.
-            </p>
+          <div className="space-y-6 pt-1">
+            {/* Checklist */}
             <div>
-              <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Monto de mano de obra ($)</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  autoFocus
-                  className="w-full border border-zinc-300 rounded-lg pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                  placeholder="0"
-                  value={costoMOInput}
-                  onChange={e => setCostoMOInput(e.target.value)}
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+                Checklist de verificación
+              </p>
+              <ChecklistOT otId={ot.id} editable={true} />
+            </div>
+
+            {/* Separador */}
+            <div className="border-t border-zinc-200" />
+
+            {/* Cobro */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                Tu cobro
+              </p>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Monto de mano de obra ($)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    className="w-full border border-zinc-300 rounded-lg pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    placeholder="0"
+                    value={costoMOInput}
+                    onChange={e => setCostoMOInput(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Detalle del trabajo cobrado</label>
+                <textarea
+                  rows={3}
+                  className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+                  placeholder="Ej: Cambio de aceite, filtros y revisión de frenos…"
+                  value={costoMODetalle}
+                  onChange={e => setCostoMODetalle(e.target.value)}
                 />
               </div>
             </div>
-            <div>
-              <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Detalle del trabajo cobrado</label>
-              <textarea
-                rows={3}
-                className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
-                placeholder="Ej: Cambio de aceite, filtros y revisión de frenos…"
-                value={costoMODetalle}
-                onChange={e => setCostoMODetalle(e.target.value)}
-              />
-            </div>
+
             <div className="flex gap-2 pt-1">
               <Button
                 variant="outline"

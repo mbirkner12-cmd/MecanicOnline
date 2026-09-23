@@ -25,6 +25,7 @@ import { ArrowLeft, Pencil, Car, User, Wrench, Calendar, FileText, Package, Clip
 import { RepuestosInventarioOT } from "@/components/ordenes-trabajo/RepuestosInventarioOT";
 import { ResumenCostosOT } from "@/components/ordenes-trabajo/ResumenCostosOT";
 import { GastosOT } from "@/components/ordenes-trabajo/GastosOT";
+import { ChecklistOT } from "@/components/ordenes-trabajo/ChecklistOT";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTDetalle {
@@ -898,6 +899,24 @@ export default function OTDetallePage() {
                   </button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Checklist de entrega */}
+        {(ot.estado === 'en_reparacion' || ot.estado === 'listo_para_entregar' || ot.estado === 'entregado') && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <CheckCircle2 className="size-4 text-zinc-500" />
+                Checklist de entrega
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChecklistOT
+                otId={ot.id}
+                editable={ot.estado === 'en_reparacion' || ot.estado === 'listo_para_entregar'}
+              />
             </CardContent>
           </Card>
         )}

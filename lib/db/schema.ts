@@ -234,6 +234,15 @@ export const facturas_compra = sqliteTable('facturas_compra', {
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+export const ot_checklist = sqliteTable('ot_checklist', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  ot_id: integer('ot_id').notNull().references(() => ordenes_trabajo.id),
+  item_key: text('item_key').notNull(),
+  checked: integer('checked', { mode: 'boolean' }).notNull().default(false),
+  foto_url: text('foto_url'),
+  updated_at: text('updated_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 export const eventos_calendario = sqliteTable('eventos_calendario', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   fecha: text('fecha').notNull(), // 'YYYY-MM-DD'

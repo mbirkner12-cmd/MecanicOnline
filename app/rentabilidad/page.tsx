@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Minus, DollarSign, Wrench, Package, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, Wrench, Package, BarChart3, Users } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTRow {
@@ -13,7 +13,12 @@ interface OTRow {
   fecha_hora_fin: string | null;
   horas_trabajadas: number | null;
   costo_mo_override: number | null;
+  costo_repuestos_cot: string | null;
+  costo_repuestos_override: number | null;
+  costo_total_override: number | null;
   updated_at: string;
+  mecanico_id: number | null;
+  mecanico_nombre: string | null;
   vehiculo_patente: string | null;
   vehiculo_marca: string | null;
   vehiculo_modelo: string | null;
@@ -24,10 +29,25 @@ interface OTRow {
   cot_repuestos: string | null;
 }
 
+interface RepuestoDetalle {
+  ot_id: number;
+  nombre: string;
+  cantidad: number;
+  precio_costo_snapshot: number;
+}
+
+interface FacturaRow {
+  ot_id: number | null;
+  total_neto: number;
+  items: string;
+}
+
 interface RentabilidadData {
   ots: OTRow[];
   valorHora: number;
   costoRepuestosPorOT: Record<number, { costo: number; venta: number }>;
+  repuestosDetalle: RepuestoDetalle[];
+  facturas: FacturaRow[];
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -41,7 +61,12 @@ function horasAuto(inicio: string | null, fin: string | null): number {
   return Math.max(0, ms / 3_600_000);
 }
 
-function calcOT(ot: OTRow, valorHora: number, costoReps: { costo: number; venta: number } | undefined) {
+function calcOT(
+  ot: OTRow,
+  valorHora: number,
+  costoRepsInvData: { costo: number; venta: number } | undefined,
+  facturasOT: FacturaRow[]
+) {
   const ingreso = ot.cot_total ?? 0;
   const ingresoMO = ot.cot_mo ?? 0;
   let ingresoRepsCot = 0;
@@ -52,12 +77,30 @@ function calcOT(ot: OTRow, valorHora: number, costoReps: { costo: number; venta:
 
   const h = ot.horas_trabajadas ?? horasAuto(ot.fecha_hora_inicio, ot.fecha_hora_fin);
   const costoMO = ot.costo_mo_override !== null ? ot.costo_mo_override : h * valorHora;
-  const costoRepsInv = costoReps?.costo ?? 0;
-  const totalCosto = costoMO + costoRepsInv;
+
+  let costoRepsCotTotal = 0;
+  try {
+    const costosCot = JSON.parse(ot.costo_repuestos_cot ?? 'null') as (number | null)[] | null ?? [];
+    const repsCot = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ cantidad: number }>;
+    costoRepsCotTotal = repsCot.reduce((s, r, i) => s + r.cantidad * (costosCot[i] ?? 0), 0);
+  } catch { /* */ }
+
+  const costoFacturasNoAsignadas = facturasOT.reduce((sum, f) => {
+    try {
+      const lines = JSON.parse(f.items) as Array<{ match_key: string | null; total: number; cantidad: number; precio_unitario: number }>;
+      const costoAsignado = lines.filter(l => l.match_key).reduce((s, l) => s + (l.total || l.cantidad * l.precio_unitario), 0);
+      return sum + Math.max(0, (f.total_neto ?? 0) - costoAsignado);
+    } catch { return sum + (f.total_neto ?? 0); }
+  }, 0);
+
+  const costoRepsInv = costoRepsInvData?.costo ?? 0;
+  const costoRepsCalculado = costoRepsInv + costoRepsCotTotal + costoFacturasNoAsignadas;
+  const costoReps = ot.costo_repuestos_override !== null ? ot.costo_repuestos_override : costoRepsCalculado;
+  const totalCostoCalculado = costoReps + costoMO;
+  const totalCosto = ot.costo_total_override !== null ? ot.costo_total_override : totalCostoCalculado;
   const ganancia = ingreso - totalCosto;
   const margen = ingreso > 0 ? (ganancia / ingreso) * 100 : 0;
-
-  return { ingreso, ingresoMO, ingresoRepsCot, costoMO, costoRepsInv, totalCosto, ganancia, margen };
+  return { ingreso, ingresoMO, ingresoRepsCot, costoMO, costoReps, totalCosto, ganancia, margen };
 }
 
 const PERIODOS = [
@@ -108,6 +151,18 @@ export default function RentabilidadPage() {
     });
   }, [data, periodo]);
 
+  // Map facturas por OT
+  const facturasMap = useMemo(() => {
+    if (!data) return {} as Record<number, FacturaRow[]>;
+    const map: Record<number, FacturaRow[]> = {};
+    for (const f of data.facturas) {
+      if (f.ot_id === null) continue;
+      if (!map[f.ot_id]) map[f.ot_id] = [];
+      map[f.ot_id].push(f);
+    }
+    return map;
+  }, [data]);
+
   // Calcular agregados
   const stats = useMemo(() => {
     if (!data) return null;
@@ -115,10 +170,10 @@ export default function RentabilidadPage() {
     let totalIngresoMO = 0, totalIngresoReps = 0;
 
     for (const ot of otsFiltradas) {
-      const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id]);
+      const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? []);
       totalIngreso += c.ingreso;
       totalCostoMO += c.costoMO;
-      totalCostoReps += c.costoRepsInv;
+      totalCostoReps += c.costoReps;
       totalGanancia += c.ganancia;
       totalIngresoMO += c.ingresoMO;
       totalIngresoReps += c.ingresoRepsCot;
@@ -128,6 +183,37 @@ export default function RentabilidadPage() {
     const margenProm = totalIngreso > 0 ? (totalGanancia / totalIngreso) * 100 : 0;
 
     return { totalIngreso, totalCostoMO, totalCostoReps, totalCosto, totalGanancia, margenProm, totalIngresoMO, totalIngresoReps };
+  }, [data, otsFiltradas, facturasMap]);
+
+  // Costo M.O. por mecánico
+  const mecanicoCosts = useMemo(() => {
+    if (!data) return [];
+    const map: Record<string, { nombre: string; totalMO: number; nOTs: number }> = {};
+    for (const ot of otsFiltradas) {
+      const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? []);
+      const key = ot.mecanico_nombre ?? 'Sin asignar';
+      if (!map[key]) map[key] = { nombre: key, totalMO: 0, nOTs: 0 };
+      map[key].totalMO += c.costoMO;
+      map[key].nOTs += 1;
+    }
+    return Object.values(map).sort((a, b) => b.totalMO - a.totalMO);
+  }, [data, otsFiltradas, facturasMap]);
+
+  // Top repuestos por costo
+  const topRepuestos = useMemo(() => {
+    if (!data) return [];
+    const otIds = new Set(otsFiltradas.map(o => o.id));
+    const map: Record<string, { total: number; nOTs: Set<number> }> = {};
+    for (const r of data.repuestosDetalle) {
+      if (!otIds.has(r.ot_id)) continue;
+      if (!map[r.nombre]) map[r.nombre] = { total: 0, nOTs: new Set() };
+      map[r.nombre].total += r.cantidad * r.precio_costo_snapshot;
+      map[r.nombre].nOTs.add(r.ot_id);
+    }
+    return Object.entries(map)
+      .sort(([, a], [, b]) => b.total - a.total)
+      .slice(0, 10)
+      .map(([nombre, v]) => ({ nombre, total: v.total, nOTs: v.nOTs.size }));
   }, [data, otsFiltradas]);
 
   if (loading) {
@@ -254,6 +340,63 @@ export default function RentabilidadPage() {
         </div>
       )}
 
+      {/* ── Mecánico + Top repuestos ──────────────────────────────────────── */}
+      {otsFiltradas.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Costo MO por mecánico */}
+          <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
+              <Users className="h-4 w-4 text-zinc-400" />
+              Costo M.O. por mecánico
+            </h2>
+            {mecanicoCosts.length === 0 ? (
+              <p className="text-xs text-zinc-400 italic">Sin datos de mecánicos.</p>
+            ) : (
+              <div className="space-y-3">
+                {mecanicoCosts.map(m => (
+                  <Bar
+                    key={m.nombre}
+                    label={`${m.nombre} (${m.nOTs} OT${m.nOTs !== 1 ? 's' : ''})`}
+                    value={m.totalMO}
+                    max={mecanicoCosts[0].totalMO}
+                    color="bg-blue-400"
+                  />
+                ))}
+              </div>
+            )}
+            {mecanicoCosts.length > 0 && stats && (
+              <div className="border-t border-zinc-100 pt-3 flex justify-between text-sm font-semibold text-zinc-800">
+                <span>Total M.O.</span>
+                <span>{formatCLP(stats.totalCostoMO)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Top repuestos */}
+          <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
+              <Package className="h-4 w-4 text-zinc-400" />
+              Top repuestos por costo
+            </h2>
+            {topRepuestos.length === 0 ? (
+              <p className="text-xs text-zinc-400 italic">Sin repuestos de inventario registrados.</p>
+            ) : (
+              <div className="space-y-3">
+                {topRepuestos.map(r => (
+                  <Bar
+                    key={r.nombre}
+                    label={`${r.nombre} (${r.nOTs} OT${r.nOTs !== 1 ? 's' : ''})`}
+                    value={r.total}
+                    max={topRepuestos[0].total}
+                    color="bg-orange-400"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Tabla por OT ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-zinc-100 flex items-center gap-2">
@@ -266,6 +409,7 @@ export default function RentabilidadPage() {
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500">OT</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 hidden md:table-cell">Cliente / Vehículo</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 hidden md:table-cell">Mecánico</th>
                 <th className="text-right px-4 py-2.5 text-xs font-semibold text-zinc-500">Ingreso</th>
                 <th className="text-right px-4 py-2.5 text-xs font-semibold text-zinc-500 hidden lg:table-cell">Costo MO</th>
                 <th className="text-right px-4 py-2.5 text-xs font-semibold text-zinc-500 hidden lg:table-cell">Costo reps.</th>
@@ -276,14 +420,14 @@ export default function RentabilidadPage() {
             <tbody>
               {otsFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-zinc-400 text-sm">
+                  <td colSpan={8} className="px-4 py-10 text-center text-zinc-400 text-sm">
                     No hay órdenes en el período seleccionado.
                   </td>
                 </tr>
               ) : (
                 otsFiltradas.map(ot => {
-                  const c = calcOT(ot, data!.valorHora, data!.costoRepuestosPorOT[ot.id]);
-                  const margenColor = c.margen > 30 ? 'text-green-600 bg-green-50' : c.margen > 10 ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50';
+                  const c = calcOT(ot, data!.valorHora, data!.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? []);
+                  const rowMargenColor = c.margen > 30 ? 'text-green-600 bg-green-50' : c.margen > 10 ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50';
                   return (
                     <tr key={ot.id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
                       <td className="px-4 py-2.5">
@@ -295,14 +439,15 @@ export default function RentabilidadPage() {
                         <p className="text-zinc-700 text-xs">{ot.cliente_nombre ?? '—'}</p>
                         <p className="text-zinc-400 text-xs">{ot.vehiculo_patente} · {ot.vehiculo_marca} {ot.vehiculo_modelo}</p>
                       </td>
+                      <td className="px-4 py-2.5 text-xs text-zinc-600 hidden md:table-cell">{ot.mecanico_nombre ?? '—'}</td>
                       <td className="px-4 py-2.5 text-right font-medium text-zinc-800">{formatCLP(c.ingreso)}</td>
                       <td className="px-4 py-2.5 text-right text-zinc-500 hidden lg:table-cell">{formatCLP(c.costoMO)}</td>
-                      <td className="px-4 py-2.5 text-right text-zinc-500 hidden lg:table-cell">{formatCLP(c.costoRepsInv)}</td>
+                      <td className="px-4 py-2.5 text-right text-zinc-500 hidden lg:table-cell">{formatCLP(c.costoReps)}</td>
                       <td className={`px-4 py-2.5 text-right font-semibold ${c.ganancia >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {formatCLP(c.ganancia)}
                       </td>
                       <td className="px-4 py-2.5 text-right">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${margenColor}`}>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${rowMargenColor}`}>
                           {c.margen.toFixed(1)}%
                         </span>
                       </td>
@@ -314,7 +459,7 @@ export default function RentabilidadPage() {
             {otsFiltradas.length > 0 && stats && (
               <tfoot>
                 <tr className="border-t-2 border-zinc-200 bg-zinc-50 font-semibold">
-                  <td className="px-4 py-2.5 text-xs text-zinc-500" colSpan={2}>{otsFiltradas.length} OTs</td>
+                  <td className="px-4 py-2.5 text-xs text-zinc-500" colSpan={3}>{otsFiltradas.length} OTs</td>
                   <td className="px-4 py-2.5 text-right text-zinc-800">{formatCLP(stats.totalIngreso)}</td>
                   <td className="px-4 py-2.5 text-right text-zinc-500 hidden lg:table-cell">{formatCLP(stats.totalCostoMO)}</td>
                   <td className="px-4 py-2.5 text-right text-zinc-500 hidden lg:table-cell">{formatCLP(stats.totalCostoReps)}</td>

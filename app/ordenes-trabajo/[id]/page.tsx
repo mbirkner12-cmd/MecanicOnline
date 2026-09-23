@@ -814,8 +814,8 @@ export default function OTDetallePage() {
           );
         })()}
 
-        {/* Resumen de costos y rentabilidad — visible cuando la OT está terminada */}
-        {(ot.estado === "listo_para_entregar" || ot.estado === "entregado") && (
+        {/* Resumen de costos y rentabilidad */}
+        {(ot.estado === "en_reparacion" || ot.estado === "listo_para_entregar" || ot.estado === "entregado") && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-sm">

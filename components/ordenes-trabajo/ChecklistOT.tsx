@@ -3,17 +3,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { CheckCircle2, Circle, Camera, Loader2, X, ZoomIn } from 'lucide-react';
 
-const ITEMS = [
-  { key: 'trabajos_ot', label: 'Trabajos de la OT / cotización completados' },
-  { key: 'presion_neumaticos', label: 'Presión de neumáticos revisada' },
-  { key: 'apriete_ruedas', label: 'Apriete de ruedas verificado' },
-  { key: 'nivel_aceite', label: 'Nivel de aceite correcto' },
-  { key: 'nivel_limpiaparabrisas', label: 'Nivel de limpiaparabrisas correcto' },
-  { key: 'nivel_coolant', label: 'Nivel de coolant correcto' },
-  { key: 'luces', label: 'Revisión de luces del auto' },
-] as const;
-
-type ItemKey = typeof ITEMS[number]['key'];
+export interface ChecklistItem {
+  key: string;
+  label: string;
+}
 
 interface ChecklistRow {
   id: number;
@@ -30,6 +23,7 @@ interface Props {
 }
 
 export function ChecklistOT({ otId, editable }: Props) {
+  const [items, setItems] = useState<ChecklistItem[]>([]);
   const [rows, setRows] = useState<ChecklistRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -39,21 +33,26 @@ export function ChecklistOT({ otId, editable }: Props) {
   const pendingUploadKey = useRef<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/ordenes-trabajo/${otId}/checklist`)
-      .then(r => r.ok ? r.json() as Promise<ChecklistRow[]> : Promise.resolve([]))
-      .then(data => setRows(Array.isArray(data) ? data : []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch('/api/configuracion')
+        .then(r => r.ok ? r.json() as Promise<{ checklist_items?: ChecklistItem[] }> : Promise.resolve({} as { checklist_items?: ChecklistItem[] }))
+        .catch(() => ({} as { checklist_items?: ChecklistItem[] })),
+      fetch(`/api/ordenes-trabajo/${otId}/checklist`)
+        .then(r => r.ok ? r.json() as Promise<ChecklistRow[]> : Promise.resolve([]))
+        .catch(() => [] as ChecklistRow[]),
+    ]).then(([cfg, checkRows]) => {
+      setItems(cfg.checklist_items ?? []);
+      setRows(Array.isArray(checkRows) ? checkRows : []);
+    }).finally(() => setLoading(false));
   }, [otId]);
 
-  const getRow = (key: ItemKey) => rows.find(r => r.item_key === key);
+  const getRow = (key: string) => rows.find(r => r.item_key === key);
 
-  const toggleCheck = async (key: ItemKey) => {
+  const toggleCheck = async (key: string) => {
     if (!editable || savingKey) return;
     const current = getRow(key);
     const newChecked = !current?.checked;
     setSavingKey(key);
-    // Optimistic
     setRows(prev => {
       const exists = prev.find(r => r.item_key === key);
       if (exists) return prev.map(r => r.item_key === key ? { ...r, checked: newChecked } : r);
@@ -70,14 +69,13 @@ export function ChecklistOT({ otId, editable }: Props) {
         setRows(prev => prev.map(r => r.item_key === key ? updated : r));
       }
     } catch {
-      // revert on error
       setRows(prev => prev.map(r => r.item_key === key ? { ...r, checked: !newChecked } : r));
     } finally {
       setSavingKey(null);
     }
   };
 
-  const handleFotoClick = (key: ItemKey) => {
+  const handleFotoClick = (key: string) => {
     if (!editable) return;
     pendingUploadKey.current = key;
     fileInputRef.current?.click();
@@ -88,7 +86,6 @@ export function ChecklistOT({ otId, editable }: Props) {
     const key = pendingUploadKey.current;
     if (!file || !key) return;
     e.target.value = '';
-
     setUploadingKey(key);
     try {
       const form = new FormData();
@@ -96,7 +93,6 @@ export function ChecklistOT({ otId, editable }: Props) {
       const uploadRes = await fetch('/api/upload', { method: 'POST', body: form });
       if (!uploadRes.ok) throw new Error('upload failed');
       const { url } = await uploadRes.json() as { url: string };
-
       const res = await fetch(`/api/ordenes-trabajo/${otId}/checklist`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -110,14 +106,12 @@ export function ChecklistOT({ otId, editable }: Props) {
           return [...prev, updated];
         });
       }
-    } catch {
-      // silent — photo not uploaded
-    } finally {
+    } catch { /* silent */ } finally {
       setUploadingKey(null);
     }
   };
 
-  const removeFoto = async (key: ItemKey) => {
+  const removeFoto = async (key: string) => {
     if (!editable) return;
     setRows(prev => prev.map(r => r.item_key === key ? { ...r, foto_url: null } : r));
     await fetch(`/api/ordenes-trabajo/${otId}/checklist`, {
@@ -127,18 +121,22 @@ export function ChecklistOT({ otId, editable }: Props) {
     });
   };
 
-  const checked = rows.filter(r => r.checked).length;
-  const total = ITEMS.length;
-  const allDone = checked === total;
+  const checkedCount = rows.filter(r => r.checked && items.some(i => i.key === r.item_key)).length;
+  const total = items.length;
+  const allDone = total > 0 && checkedCount === total;
 
   if (loading) {
     return (
       <div className="space-y-3">
-        {ITEMS.map(item => (
-          <div key={item.key} className="h-10 bg-zinc-100 rounded-lg animate-pulse" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-10 bg-zinc-100 rounded-lg animate-pulse" />
         ))}
       </div>
     );
+  }
+
+  if (items.length === 0) {
+    return <p className="text-sm text-zinc-400 italic">No hay ítems configurados en el checklist.</p>;
   }
 
   return (
@@ -146,7 +144,7 @@ export function ChecklistOT({ otId, editable }: Props) {
       {/* Progress */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-zinc-500">
-          <span className={`font-semibold ${allDone ? 'text-green-600' : 'text-zinc-700'}`}>{checked}</span>
+          <span className={`font-semibold ${allDone ? 'text-green-600' : 'text-zinc-700'}`}>{checkedCount}</span>
           <span> / {total} ítems completados</span>
         </p>
         {allDone && (
@@ -157,17 +155,15 @@ export function ChecklistOT({ otId, editable }: Props) {
         )}
       </div>
 
-      {/* Progress bar */}
       <div className="h-1.5 bg-zinc-100 rounded-full mb-5 overflow-hidden">
         <div
           className="h-full rounded-full bg-green-500 transition-all duration-500"
-          style={{ width: `${(checked / total) * 100}%` }}
+          style={{ width: total > 0 ? `${(checkedCount / total) * 100}%` : '0%' }}
         />
       </div>
 
-      {/* Items */}
       <div className="space-y-2">
-        {ITEMS.map(item => {
+        {items.map(item => {
           const row = getRow(item.key);
           const isChecked = row?.checked ?? false;
           const fotoUrl = row?.foto_url ?? null;
@@ -181,12 +177,10 @@ export function ChecklistOT({ otId, editable }: Props) {
                 isChecked ? 'border-green-200 bg-green-50/50' : 'border-zinc-100 bg-white'
               }`}
             >
-              {/* Checkbox */}
               <button
                 onClick={() => toggleCheck(item.key)}
                 disabled={!editable || !!savingKey}
                 className={`flex-none transition-colors ${editable ? 'cursor-pointer' : 'cursor-default'}`}
-                aria-label={isChecked ? 'Marcar como incompleto' : 'Marcar como completo'}
               >
                 {isSaving ? (
                   <Loader2 className="size-5 text-zinc-400 animate-spin" />
@@ -197,12 +191,10 @@ export function ChecklistOT({ otId, editable }: Props) {
                 )}
               </button>
 
-              {/* Label */}
               <span className={`flex-1 text-sm ${isChecked ? 'text-zinc-600 line-through' : 'text-zinc-800'}`}>
                 {item.label}
               </span>
 
-              {/* Foto */}
               <div className="flex items-center gap-1.5 flex-none">
                 {fotoUrl ? (
                   <>
@@ -213,9 +205,6 @@ export function ChecklistOT({ otId, editable }: Props) {
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={fotoUrl} alt={item.label} className="size-full object-cover" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
-                        <ZoomIn className="size-3 text-white opacity-0 hover:opacity-100" />
-                      </div>
                     </button>
                     {editable && (
                       <button
@@ -232,13 +221,8 @@ export function ChecklistOT({ otId, editable }: Props) {
                     onClick={() => handleFotoClick(item.key)}
                     disabled={isUploading}
                     className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 border border-dashed border-zinc-200 hover:border-zinc-400 rounded-md px-2 py-1 transition-colors disabled:opacity-50"
-                    title="Subir foto"
                   >
-                    {isUploading ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <Camera className="size-3" />
-                    )}
+                    {isUploading ? <Loader2 className="size-3 animate-spin" /> : <Camera className="size-3" />}
                     <span>{isUploading ? 'Subiendo...' : 'Foto'}</span>
                   </button>
                 ) : null}
@@ -248,7 +232,6 @@ export function ChecklistOT({ otId, editable }: Props) {
         })}
       </div>
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -257,7 +240,6 @@ export function ChecklistOT({ otId, editable }: Props) {
         onChange={handleFileChange}
       />
 
-      {/* Lightbox */}
       {lightbox && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"

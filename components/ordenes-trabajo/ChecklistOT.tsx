@@ -29,6 +29,8 @@ export function ChecklistOT({ otId, editable, onProgressChange }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingKey = useRef<string | null>(null);
+  const onProgressChangeRef = useRef(onProgressChange);
+  onProgressChangeRef.current = onProgressChange;
 
   useEffect(() => {
     Promise.all([
@@ -121,8 +123,8 @@ export function ChecklistOT({ otId, editable, onProgressChange }: Props) {
   const allDone = total > 0 && checkedCount === total;
 
   useEffect(() => {
-    if (!loading) onProgressChange?.(checkedCount, total);
-  }, [checkedCount, total, loading, onProgressChange]);
+    if (!loading) onProgressChangeRef.current?.(checkedCount, total);
+  }, [checkedCount, total, loading]);
 
   if (loading) {
     return (

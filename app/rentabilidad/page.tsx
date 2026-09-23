@@ -61,6 +61,17 @@ function horasAuto(inicio: string | null, fin: string | null): number {
   return Math.max(0, ms / 3_600_000);
 }
 
+const SKIP_WORDS = new Set(['de', 'del', 'para', 'el', 'la', 'los', 'las', 'un', 'una', 'y', 'e', 'o', 'en', 'con', 'sin', 'a', 'al', 'por']);
+
+function normalizeRepuestoNombre(nombre: string): string {
+  const words = nombre
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(w => w && !SKIP_WORDS.has(w));
+  const key = words.slice(0, 2).join(' ');
+  return key.replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function calcOT(
   ot: OTRow,
   valorHora: number,
@@ -131,11 +142,26 @@ export default function RentabilidadPage() {
   const [data, setData] = useState<RentabilidadData | null>(null);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<number>(90);
+  const [categorias, setCategorias] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch('/api/rentabilidad')
-      .then(r => r.json())
-      .then(setData)
+      .then(r => r.json() as Promise<RentabilidadData>)
+      .then(d => {
+        setData(d);
+        // Categorize unique repuesto names using AI
+        const uniqueNames = [...new Set(d.repuestosDetalle.map(r => r.nombre).filter(Boolean))];
+        if (uniqueNames.length > 0) {
+          fetch('/api/categorize-repuestos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombres: uniqueNames }),
+          })
+            .then(r => r.json() as Promise<Record<string, string>>)
+            .then(setCategorias)
+            .catch(() => { /* fallback to normalization */ });
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -199,22 +225,24 @@ export default function RentabilidadPage() {
     return Object.values(map).sort((a, b) => b.totalMO - a.totalMO);
   }, [data, otsFiltradas, facturasMap]);
 
-  // Top repuestos por costo
+  // Top repuestos por costo — AI category when available, else simple normalization fallback
   const topRepuestos = useMemo(() => {
     if (!data) return [];
     const otIds = new Set(otsFiltradas.map(o => o.id));
-    const map: Record<string, { total: number; nOTs: Set<number> }> = {};
+    const map: Record<string, { display: string; total: number; nOTs: Set<number> }> = {};
     for (const r of data.repuestosDetalle) {
       if (!otIds.has(r.ot_id)) continue;
-      if (!map[r.nombre]) map[r.nombre] = { total: 0, nOTs: new Set() };
-      map[r.nombre].total += r.cantidad * r.precio_costo_snapshot;
-      map[r.nombre].nOTs.add(r.ot_id);
+      const display = categorias[r.nombre] ?? normalizeRepuestoNombre(r.nombre);
+      const key = display.toLowerCase();
+      if (!map[key]) map[key] = { display, total: 0, nOTs: new Set() };
+      map[key].total += r.cantidad * r.precio_costo_snapshot;
+      map[key].nOTs.add(r.ot_id);
     }
     return Object.entries(map)
       .sort(([, a], [, b]) => b.total - a.total)
       .slice(0, 10)
-      .map(([nombre, v]) => ({ nombre, total: v.total, nOTs: v.nOTs.size }));
-  }, [data, otsFiltradas]);
+      .map(([, v]) => ({ nombre: v.display, total: v.total, nOTs: v.nOTs.size }));
+  }, [data, otsFiltradas, categorias]);
 
   if (loading) {
     return (

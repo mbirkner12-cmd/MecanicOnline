@@ -17,9 +17,10 @@ interface ChecklistRow {
 interface Props {
   otId: number;
   editable: boolean;
+  onProgressChange?: (checked: number, total: number) => void;
 }
 
-export function ChecklistOT({ otId, editable }: Props) {
+export function ChecklistOT({ otId, editable, onProgressChange }: Props) {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [rows, setRows] = useState<ChecklistRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +119,10 @@ export function ChecklistOT({ otId, editable }: Props) {
   const checkedCount = rows.filter(r => r.checked && items.some(i => i.key === r.item_key)).length;
   const total = items.length;
   const allDone = total > 0 && checkedCount === total;
+
+  useEffect(() => {
+    if (!loading) onProgressChange?.(checkedCount, total);
+  }, [checkedCount, total, loading, onProgressChange]);
 
   if (loading) {
     return (

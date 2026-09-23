@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -125,6 +125,19 @@ export default function OrdenesTrabajoPAge() {
   // Eliminar dialog
   const [eliminarOT, setEliminarOT] = useState<OTRow | null>(null);
   const [eliminarLoading, setEliminarLoading] = useState(false);
+
+  // Búsqueda por patente
+  const [busqueda, setBusqueda] = useState("");
+
+  const otsFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase().replace(/[\s-]/g, '');
+    if (!q) return ots;
+    return ots.filter(ot =>
+      ot.vehiculo?.patente.toLowerCase().replace(/[\s-]/g, '').includes(q) ||
+      ot.cliente?.nombre.toLowerCase().includes(q) ||
+      ot.numero.toLowerCase().includes(q)
+    );
+  }, [ots, busqueda]);
 
   const fetchOTs = useCallback(async () => {
     setLoading(true);
@@ -265,15 +278,27 @@ export default function OrdenesTrabajoPAge() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">Órdenes de trabajo</h1>
           <p className="text-zinc-500 mt-1 text-sm">Gestión de órdenes de trabajo del taller</p>
         </div>
-        <Button onClick={() => setNuevaOTOpen(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Nueva OT
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar patente, cliente, N° OT..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              className="pl-8 pr-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 w-64"
+            />
+          </div>
+          <Button onClick={() => setNuevaOTOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Nueva OT
+          </Button>
+        </div>
       </div>
 
       {/* Error */}
@@ -305,7 +330,13 @@ export default function OrdenesTrabajoPAge() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ots.map((ot) => (
+              {otsFiltradas.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-10 text-zinc-400 text-sm">
+                    No hay órdenes que coincidan con &ldquo;{busqueda}&rdquo;.
+                  </TableCell>
+                </TableRow>
+              ) : otsFiltradas.map((ot) => (
                 <TableRow key={ot.id} className="hover:bg-zinc-50/50">
                   <TableCell className="font-mono font-medium text-zinc-900">
                     {ot.numero}

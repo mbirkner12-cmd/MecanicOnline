@@ -355,7 +355,7 @@ export default function RentabilidadPage() {
           <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
             <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
               <Package className="h-4 w-4 text-zinc-400" />
-              Top repuestos por costo
+              Costos detalle
             </h2>
             {topRepuestos.length === 0 && (!stats || stats.totalCostoMO === 0) ? (
               <p className="text-xs text-zinc-400 italic">Sin repuestos de inventario registrados.</p>

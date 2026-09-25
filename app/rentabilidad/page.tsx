@@ -142,6 +142,7 @@ export default function RentabilidadPage() {
   const [data, setData] = useState<RentabilidadData | null>(null);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<number>(90);
+  const [mesFiltro, setMesFiltro] = useState<string>(''); // 'YYYY-MM' o vacío
   const [categorias, setCategorias] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -165,9 +166,15 @@ export default function RentabilidadPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Filtrar por período
+  // Filtrar por período o mes específico
   const otsFiltradas = useMemo(() => {
     if (!data) return [];
+    if (mesFiltro) {
+      return data.ots.filter(ot => {
+        const fecha = ot.fecha_hora_fin ?? ot.updated_at;
+        return fecha ? fecha.slice(0, 7) === mesFiltro : false;
+      });
+    }
     if (periodo === 0) return data.ots;
     const desde = new Date();
     desde.setDate(desde.getDate() - periodo);
@@ -175,7 +182,7 @@ export default function RentabilidadPage() {
       const fecha = ot.fecha_hora_fin ?? ot.updated_at;
       return fecha ? new Date(fecha) >= desde : false;
     });
-  }, [data, periodo]);
+  }, [data, periodo, mesFiltro]);
 
   // Map facturas por OT
   const facturasMap = useMemo(() => {
@@ -266,16 +273,25 @@ export default function RentabilidadPage() {
           <p className="text-zinc-500 text-sm mt-0.5">Costos y márgenes de las órdenes terminadas</p>
         </div>
         {/* Filtro período */}
-        <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-1">
-          {PERIODOS.map(p => (
-            <button
-              key={p.days}
-              onClick={() => setPeriodo(p.days)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${periodo === p.days ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-1">
+            {PERIODOS.map(p => (
+              <button
+                key={p.days}
+                onClick={() => { setPeriodo(p.days); setMesFiltro(''); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${!mesFiltro && periodo === p.days ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <input
+            type="month"
+            value={mesFiltro}
+            onChange={e => setMesFiltro(e.target.value)}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${mesFiltro ? 'bg-white border-zinc-900 text-zinc-900 shadow-sm' : 'bg-zinc-100 border-transparent text-zinc-500 hover:text-zinc-700'}`}
+            title="Filtrar por mes"
+          />
         </div>
       </div>
 

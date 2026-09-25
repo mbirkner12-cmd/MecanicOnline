@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Minus, DollarSign, Wrench, Package, BarChart3, Users } from 'lucide-react';
+import { DollarSign, Wrench, Package, BarChart3, Users } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTRow {
@@ -257,7 +257,6 @@ export default function RentabilidadPage() {
   }
 
   const margenColor = !stats ? 'text-zinc-500' : stats.margenProm > 30 ? 'text-green-600' : stats.margenProm > 10 ? 'text-amber-600' : 'text-red-600';
-  const MargenIcon = !stats ? Minus : stats.totalGanancia > 0 ? TrendingUp : stats.totalGanancia < 0 ? TrendingDown : Minus;
 
   return (
     <div className="flex flex-col gap-6">
@@ -281,7 +280,7 @@ export default function RentabilidadPage() {
       </div>
 
       {/* ── Cards resumen ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-zinc-200 p-4">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign className="h-4 w-4 text-zinc-400" />
@@ -299,71 +298,23 @@ export default function RentabilidadPage() {
           <p className="text-xl font-bold text-red-600">{formatCLP(stats?.totalCosto ?? 0)}</p>
           <p className="text-xs text-zinc-400 mt-0.5">MO + repuestos</p>
         </div>
-
-        <div className={`bg-white rounded-xl border p-4 ${(stats?.totalGanancia ?? 0) >= 0 ? 'border-green-200' : 'border-red-200'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <MargenIcon className="h-4 w-4 text-zinc-400" />
-            <p className="text-xs text-zinc-500 font-medium">Ganancia bruta</p>
-          </div>
-          <p className={`text-xl font-bold ${(stats?.totalGanancia ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCLP(stats?.totalGanancia ?? 0)}
-          </p>
-          <p className="text-xs text-zinc-400 mt-0.5">antes de IVA</p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-zinc-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <BarChart3 className="h-4 w-4 text-zinc-400" />
-            <p className="text-xs text-zinc-500 font-medium">Margen promedio</p>
-          </div>
-          <p className={`text-xl font-bold ${margenColor}`}>{stats ? `${stats.margenProm.toFixed(1)}%` : '—'}</p>
-          <p className="text-xs text-zinc-400 mt-0.5">sobre ingresos netos</p>
-        </div>
       </div>
 
-      {/* ── Desglose ingresos vs costos ──────────────────────────────────── */}
+      {/* ── Ingresos por categoría ───────────────────────────────────────── */}
       {stats && stats.totalIngreso > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Ingresos */}
-          <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-zinc-400" />
-              Ingresos por categoría
-            </h2>
-            <div className="space-y-3">
-              <Bar label="Mano de obra" value={stats.totalIngresoMO} max={stats.totalIngreso} color="bg-blue-400" />
-              <Bar label="Repuestos (cotizados)" value={stats.totalIngresoReps} max={stats.totalIngreso} color="bg-violet-400" />
-              <Bar label="Otros / retiro-entrega" value={Math.max(0, stats.totalIngreso - stats.totalIngresoMO - stats.totalIngresoReps)} max={stats.totalIngreso} color="bg-zinc-300" />
-            </div>
-            <div className="border-t border-zinc-100 pt-3 flex justify-between text-sm font-semibold text-zinc-800">
-              <span>Total neto</span>
-              <span>{formatCLP(stats.totalIngreso)}</span>
-            </div>
+        <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-zinc-400" />
+            Ingresos por categoría
+          </h2>
+          <div className="space-y-3">
+            <Bar label="Mano de obra" value={stats.totalIngresoMO} max={stats.totalIngreso} color="bg-blue-400" />
+            <Bar label="Repuestos (cotizados)" value={stats.totalIngresoReps} max={stats.totalIngreso} color="bg-violet-400" />
+            <Bar label="Otros / retiro-entrega" value={Math.max(0, stats.totalIngreso - stats.totalIngresoMO - stats.totalIngresoReps)} max={stats.totalIngreso} color="bg-zinc-300" />
           </div>
-
-          {/* Costos */}
-          <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
-              <Package className="h-4 w-4 text-zinc-400" />
-              Costos por categoría
-            </h2>
-            <div className="space-y-3">
-              <Bar label="Mano de obra (costo)" value={stats.totalCostoMO} max={stats.totalIngreso} color="bg-amber-400" />
-              <Bar label="Repuestos (costo de compra)" value={stats.totalCostoReps} max={stats.totalIngreso} color="bg-orange-400" />
-              <div className="pt-1 border-t border-zinc-100">
-                <Bar label="Ganancia bruta" value={Math.max(0, stats.totalGanancia)} max={stats.totalIngreso} color="bg-green-400" />
-              </div>
-            </div>
-            <div className="border-t border-zinc-100 pt-3">
-              <div className="flex justify-between text-sm font-semibold text-red-600">
-                <span>Total costos</span>
-                <span>{formatCLP(stats.totalCosto)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-semibold text-green-600 mt-1">
-                <span>Ganancia bruta</span>
-                <span>{formatCLP(stats.totalGanancia)}</span>
-              </div>
-            </div>
+          <div className="border-t border-zinc-100 pt-3 flex justify-between text-sm font-semibold text-zinc-800">
+            <span>Total neto</span>
+            <span>{formatCLP(stats.totalIngreso)}</span>
           </div>
         </div>
       )}
@@ -406,11 +357,34 @@ export default function RentabilidadPage() {
               <Package className="h-4 w-4 text-zinc-400" />
               Top repuestos por costo
             </h2>
-            {topRepuestos.length === 0 ? (
+            {topRepuestos.length === 0 && (!stats || stats.totalCostoMO === 0) ? (
               <p className="text-xs text-zinc-400 italic">Sin repuestos de inventario registrados.</p>
             ) : (
               <div className="space-y-3">
-                {topRepuestos.map(r => (
+                {stats && stats.totalCostoMO > 0 && (() => {
+                  const maxVal = Math.max(topRepuestos[0]?.total ?? 0, stats.totalCostoMO);
+                  return (
+                    <>
+                      <Bar
+                        label="Mano de obra"
+                        value={stats.totalCostoMO}
+                        max={maxVal}
+                        color="bg-amber-400"
+                      />
+                      {topRepuestos.length > 0 && <div className="border-t border-zinc-100" />}
+                      {topRepuestos.map(r => (
+                        <Bar
+                          key={r.nombre}
+                          label={`${r.nombre} (${r.nOTs} OT${r.nOTs !== 1 ? 's' : ''})`}
+                          value={r.total}
+                          max={maxVal}
+                          color="bg-orange-400"
+                        />
+                      ))}
+                    </>
+                  );
+                })()}
+                {(!stats || stats.totalCostoMO === 0) && topRepuestos.map(r => (
                   <Bar
                     key={r.nombre}
                     label={`${r.nombre} (${r.nOTs} OT${r.nOTs !== 1 ? 's' : ''})`}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -125,6 +125,9 @@ export default function MecanicoOTDetallePage() {
   const [costoMOInput, setCostoMOInput] = useState('');
   const [costoMODetalle, setCostoMODetalle] = useState('');
   const [checklistProgress, setChecklistProgress] = useState<{ checked: number; total: number } | null>(null);
+  const handleChecklistProgress = useCallback((checked: number, total: number) => {
+    setChecklistProgress({ checked, total });
+  }, []);
 
   const fetchOT = async () => {
     setLoading(true);
@@ -270,6 +273,17 @@ export default function MecanicoOTDetallePage() {
   const todasCompletadas = mdoItems.length === 0
     || mdoItems.every((_, i) => tareasCompletadas[i] === true);
   const canTerminar = ot.estado === 'en_reparacion' && todasCompletadas;
+
+  // Terminar dialog derived state
+  const checklistOk = checklistProgress !== null && checklistProgress.total > 0 && checklistProgress.checked === checklistProgress.total;
+  const terminarMontoOk = parseInt(costoMOInput.replace(/\D/g, '') || '0') > 0;
+  const puedeConfirmar = checklistOk && terminarMontoOk;
+  const terminarPendientes: string[] = [];
+  if (!checklistOk) {
+    if (checklistProgress === null || checklistProgress.total === 0) terminarPendientes.push('completar el checklist');
+    else terminarPendientes.push(`completar ${checklistProgress.total - checklistProgress.checked} ítem${checklistProgress.total - checklistProgress.checked !== 1 ? 's' : ''} del checklist`);
+  }
+  if (!terminarMontoOk) terminarPendientes.push('ingresar el monto cobrado');
 
   return (
     <div className="flex flex-col gap-6">
@@ -669,95 +683,80 @@ export default function MecanicoOTDetallePage() {
           <DialogHeader>
             <DialogTitle>Terminar OT — {ot.numero}</DialogTitle>
           </DialogHeader>
-          {(() => {
-            const checklistOk = checklistProgress !== null && checklistProgress.total > 0 && checklistProgress.checked === checklistProgress.total;
-            const montoOk = parseInt(costoMOInput.replace(/\D/g, '') || '0') > 0;
-            const puedeConfirmar = checklistOk && montoOk;
+          <div className="space-y-6 pt-1">
+            {/* Checklist */}
+            <div>
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+                Checklist de verificación
+              </p>
+              <ChecklistOT
+                otId={ot.id}
+                editable={true}
+                onProgressChange={handleChecklistProgress}
+              />
+            </div>
 
-            const pendientes: string[] = [];
-            if (!checklistOk) {
-              if (checklistProgress === null || checklistProgress.total === 0) pendientes.push('completar el checklist');
-              else pendientes.push(`completar ${checklistProgress.total - checklistProgress.checked} ítem${checklistProgress.total - checklistProgress.checked !== 1 ? 's' : ''} del checklist`);
-            }
-            if (!montoOk) pendientes.push('ingresar el monto cobrado');
+            <div className="border-t border-zinc-200" />
 
-            return (
-              <div className="space-y-6 pt-1">
-                {/* Checklist */}
-                <div>
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-                    Checklist de verificación
-                  </p>
-                  <ChecklistOT
-                    otId={ot.id}
-                    editable={true}
-                    onProgressChange={(checked, total) => setChecklistProgress({ checked, total })}
+            {/* Cobro */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                Tu cobro
+              </p>
+              <div>
+                <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Monto de mano de obra ($) *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    className={`w-full border rounded-lg pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 ${terminarMontoOk ? 'border-zinc-300' : 'border-amber-300 bg-amber-50/30'}`}
+                    placeholder="0"
+                    value={costoMOInput}
+                    onChange={e => setCostoMOInput(e.target.value)}
                   />
                 </div>
-
-                <div className="border-t border-zinc-200" />
-
-                {/* Cobro */}
-                <div className="space-y-4">
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                    Tu cobro
-                  </p>
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Monto de mano de obra ($) *</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1000"
-                        className={`w-full border rounded-lg pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 ${montoOk ? 'border-zinc-300' : 'border-amber-300 bg-amber-50/30'}`}
-                        placeholder="0"
-                        value={costoMOInput}
-                        onChange={e => setCostoMOInput(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Detalle del trabajo cobrado</label>
-                    <textarea
-                      rows={3}
-                      className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
-                      placeholder="Ej: Cambio de aceite, filtros y revisión de frenos…"
-                      value={costoMODetalle}
-                      onChange={e => setCostoMODetalle(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Alerta de pendientes */}
-                {!puedeConfirmar && pendientes.length > 0 && (
-                  <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                    <span className="mt-0.5">⚠️</span>
-                    <span>Para terminar la OT debés {pendientes.join(' y ')}.</span>
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setTerminarDialogOpen(false)}
-                    disabled={accionLoading}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
-                    onClick={handleTerminarConCosto}
-                    disabled={accionLoading || !puedeConfirmar}
-                    title={!puedeConfirmar ? `Falta: ${pendientes.join(', ')}` : undefined}
-                  >
-                    {accionLoading ? 'Guardando...' : 'Confirmar y terminar'}
-                  </Button>
-                </div>
               </div>
-            );
-          })()}
+              <div>
+                <label className="text-xs text-zinc-500 mb-1.5 block font-medium">Detalle del trabajo cobrado</label>
+                <textarea
+                  rows={3}
+                  className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+                  placeholder="Ej: Cambio de aceite, filtros y revisión de frenos…"
+                  value={costoMODetalle}
+                  onChange={e => setCostoMODetalle(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Alerta de pendientes */}
+            {!puedeConfirmar && terminarPendientes.length > 0 && (
+              <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                <span className="mt-0.5">⚠️</span>
+                <span>Para terminar la OT debés {terminarPendientes.join(' y ')}.</span>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setTerminarDialogOpen(false)}
+                disabled={accionLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
+                onClick={handleTerminarConCosto}
+                disabled={accionLoading || !puedeConfirmar}
+                title={!puedeConfirmar ? `Falta: ${terminarPendientes.join(', ')}` : undefined}
+              >
+                {accionLoading ? 'Guardando...' : 'Confirmar y terminar'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

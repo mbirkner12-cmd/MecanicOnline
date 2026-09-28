@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { DollarSign, Wrench, Package, BarChart3, Users, Download } from 'lucide-react';
+import { DollarSign, Wrench, Package, BarChart3, Users, Download, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTRow {
@@ -40,6 +40,14 @@ interface FacturaRow {
   ot_id: number | null;
   total_neto: number;
   items: string;
+}
+
+interface GastoEstructura {
+  id: number;
+  nombre: string;
+  monto_mensual: number;
+  tipo: 'fijo' | 'gav';
+  activo: boolean;
 }
 
 interface RentabilidadData {
@@ -181,17 +189,19 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function RentabilidadPage() {
   const [data, setData] = useState<RentabilidadData | null>(null);
+  const [gastos, setGastos] = useState<GastoEstructura[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<number>(90);
   const [mesFiltro, setMesFiltro] = useState<string>(''); // 'YYYY-MM' o vacío
   const [categorias, setCategorias] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch('/api/rentabilidad')
-      .then(r => r.json() as Promise<RentabilidadData>)
-      .then(d => {
+    Promise.all([
+      fetch('/api/rentabilidad').then(r => r.json() as Promise<RentabilidadData>),
+      fetch('/api/gastos-estructura').then(r => r.json() as Promise<GastoEstructura[]>),
+    ]).then(([d, g]) => {
         setData(d);
-        // Categorize unique repuesto names using AI
+        setGastos(g.filter(x => x.activo));
         const uniqueNames = [...new Set(d.repuestosDetalle.map(r => r.nombre).filter(Boolean))];
         if (uniqueNames.length > 0) {
           fetch('/api/categorize-repuestos', {
@@ -312,6 +322,22 @@ export default function RentabilidadPage() {
       .sort(([, a], [, b]) => b.total - a.total)
       .map(([, v]) => ({ nombre: v.display, total: v.total, nOTs: v.nOTs.size }));
   }, [data, otsFiltradas, categorias]);
+
+  // Cuántos meses cubre el período seleccionado (para prorratear costos fijos)
+  const mesesPeriodo = useMemo(() => {
+    if (mesFiltro) return 1;
+    if (periodo === 30) return 1;
+    if (periodo === 90) return 3;
+    if (periodo === 180) return 6;
+    // Todo: rango real de las OTs filtradas
+    if (otsFiltradas.length === 0) return 1;
+    const dates = otsFiltradas
+      .map(ot => new Date(ot.fecha_hora_fin ?? ot.updated_at).getTime())
+      .filter(t => !isNaN(t));
+    if (dates.length === 0) return 1;
+    const diffMs = Math.max(...dates) - Math.min(...dates);
+    return Math.max(1, Math.round(diffMs / (30 * 24 * 3600 * 1000)));
+  }, [mesFiltro, periodo, otsFiltradas]);
 
   if (loading) {
     return (
@@ -486,6 +512,66 @@ export default function RentabilidadPage() {
           </div>
         </div>
       )}
+
+      {/* ── Estado de Resultados ─────────────────────────────────────────── */}
+      {stats && gastos.length > 0 && (() => {
+        const totalFijos = gastos.filter(g => g.tipo === 'fijo').reduce((s, g) => s + g.monto_mensual * mesesPeriodo, 0);
+        const totalGav = gastos.filter(g => g.tipo === 'gav').reduce((s, g) => s + g.monto_mensual * mesesPeriodo, 0);
+        const margenBruto = stats.totalIngreso - stats.totalCosto;
+        const ebit = margenBruto - totalFijos - totalGav;
+        const margenBrutoPct = stats.totalIngreso > 0 ? (margenBruto / stats.totalIngreso) * 100 : 0;
+        const margenNetoEEPct = stats.totalIngreso > 0 ? (ebit / stats.totalIngreso) * 100 : 0;
+        const ResultIcon = ebit > 0 ? TrendingUp : ebit < 0 ? TrendingDown : Minus;
+        const resultColor = ebit > 0 ? 'text-green-600' : ebit < 0 ? 'text-red-600' : 'text-zinc-500';
+        const resultBg = ebit > 0 ? 'bg-green-50 border-green-200' : ebit < 0 ? 'bg-red-50 border-red-200' : 'bg-zinc-50 border-zinc-200';
+
+        const Row = ({ label, value, bold, indent, separator, color }: { label: string; value: number; bold?: boolean; indent?: boolean; separator?: boolean; color?: string }) => (
+          <div className={`flex justify-between text-sm py-1.5 ${separator ? 'border-t border-zinc-200 mt-1 pt-2.5' : ''}`}>
+            <span className={`${indent ? 'pl-4 text-zinc-500' : bold ? 'font-semibold text-zinc-800' : 'text-zinc-600'}`}>{label}</span>
+            <span className={`font-medium ${color ?? (bold ? 'text-zinc-900' : 'text-zinc-700')}`}>{formatCLP(value)}</span>
+          </div>
+        );
+
+        return (
+          <div className="bg-white rounded-xl border border-zinc-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-zinc-400" />
+                Estado de Resultados
+              </h2>
+              <span className="text-xs text-zinc-400">{mesesPeriodo} {mesesPeriodo === 1 ? 'mes' : 'meses'}</span>
+            </div>
+            <div className="space-y-0">
+              <Row label="Ingresos netos" value={stats.totalIngreso} bold />
+              <Row label="Costo M.O." value={stats.totalCostoMO} indent />
+              <Row label="Costo repuestos" value={stats.totalCostoReps} indent />
+              <Row label="Margen bruto" value={margenBruto} bold separator color={margenBruto >= 0 ? 'text-green-700' : 'text-red-600'} />
+              <div className="text-xs text-zinc-400 text-right -mt-1 pb-1">{margenBrutoPct.toFixed(1)}% del ingreso</div>
+              {gastos.filter(g => g.tipo === 'fijo').map(g => (
+                <Row key={g.id} label={g.nombre} value={g.monto_mensual * mesesPeriodo} indent />
+              ))}
+              {totalFijos > 0 && <Row label="Total costos fijos" value={totalFijos} bold separator />}
+              {gastos.filter(g => g.tipo === 'gav').map(g => (
+                <Row key={g.id} label={g.nombre} value={g.monto_mensual * mesesPeriodo} indent />
+              ))}
+              {totalGav > 0 && <Row label="Total GAV" value={totalGav} bold separator />}
+            </div>
+            <div className={`mt-4 p-4 rounded-xl border ${resultBg} flex items-center justify-between`}>
+              <div className="flex items-center gap-3">
+                <ResultIcon className={`h-5 w-5 ${resultColor}`} />
+                <div>
+                  <p className="text-xs text-zinc-500 font-medium">Resultado del período</p>
+                  <p className={`text-2xl font-bold ${resultColor}`}>{formatCLP(ebit)}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-zinc-500 font-medium">Margen neto</p>
+                <p className={`text-xl font-bold ${resultColor}`}>{margenNetoEEPct.toFixed(1)}%</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Tabla por OT ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">

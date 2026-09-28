@@ -245,6 +245,15 @@ export const ot_checklist = sqliteTable('ot_checklist', {
   updated_at: text('updated_at').default(sql`(datetime('now'))`).notNull(),
 });
 
+export const gastos_estructura = sqliteTable('gastos_estructura', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  nombre: text('nombre').notNull(),
+  monto_mensual: real('monto_mensual').notNull().default(0),
+  tipo: text('tipo', { enum: ['fijo', 'gav'] }).notNull().default('fijo'),
+  activo: integer('activo', { mode: 'boolean' }).default(true).notNull(),
+  created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
+});
+
 export const eventos_calendario = sqliteTable('eventos_calendario', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   fecha: text('fecha').notNull(), // 'YYYY-MM-DD'

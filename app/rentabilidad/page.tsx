@@ -285,7 +285,7 @@ export default function RentabilidadPage() {
     return Object.values(map).sort((a, b) => b.totalMO - a.totalMO);
   }, [data, otsFiltradas, facturasMap]);
 
-  // Repuestos agrupados por nombre — inventario + cotización
+  // Repuestos agrupados por categoría — inventario + cotización, con "Otros" para los poco frecuentes
   const topRepuestos = useMemo(() => {
     if (!data) return [];
     const map: Record<string, { display: string; total: number; nOTs: Set<number> }> = {};
@@ -318,9 +318,29 @@ export default function RentabilidadPage() {
       } catch { /* */ }
     }
 
-    return Object.entries(map)
-      .sort(([, a], [, b]) => b.total - a.total)
-      .map(([, v]) => ({ nombre: v.display, total: v.total, nOTs: v.nOTs.size }));
+    const sorted = Object.values(map).sort((a, b) => b.total - a.total);
+    const totalOTs = otsFiltradas.length;
+
+    // Grupos con solo 1 OT y menos de 3% del total de repuestos → "Otros"
+    const totalReps = sorted.reduce((s, v) => s + v.total, 0);
+    const threshold = totalReps * 0.03;
+
+    const principales: typeof sorted = [];
+    let otrosTotal = 0;
+    const otrosOTs = new Set<number>();
+
+    for (const item of sorted) {
+      if (item.nOTs.size <= 1 && item.total < threshold && totalOTs > 3) {
+        otrosTotal += item.total;
+        item.nOTs.forEach(id => otrosOTs.add(id));
+      } else {
+        principales.push(item);
+      }
+    }
+
+    const result = principales.map(v => ({ nombre: v.display, total: v.total, nOTs: v.nOTs.size }));
+    if (otrosTotal > 0) result.push({ nombre: 'Otros', total: otrosTotal, nOTs: otrosOTs.size });
+    return result;
   }, [data, otsFiltradas, categorias]);
 
   // Cuántos meses cubre el período seleccionado (para prorratear costos fijos)

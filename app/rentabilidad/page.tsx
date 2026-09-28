@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { DollarSign, Wrench, Package, BarChart3, Users } from 'lucide-react';
+import { DollarSign, Wrench, Package, BarChart3, Users, Download } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTRow {
@@ -123,6 +123,44 @@ const PERIODOS = [
   { label: '6 meses', days: 180 },
   { label: 'Todo', days: 0 },
 ] as const;
+
+// ── Export Excel ─────────────────────────────────────────────────────────────
+async function exportarExcel(
+  rows: OTRow[],
+  valorHora: number,
+  costoRepuestosPorOT: Record<number, { costo: number; venta: number }>,
+  facturasMap: Record<number, FacturaRow[]>,
+  mecanicoFactores: Record<number, { tipo_pago: string; factor_boleta: number }>,
+) {
+  const XLSX = await import('xlsx');
+  const data = rows.map(ot => {
+    const factor = ot.mecanico_id != null ? (mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
+    const c = calcOT(ot, valorHora, costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
+    return {
+      'N° OT': ot.numero,
+      'Patente': ot.vehiculo_patente ?? '',
+      'Cliente': ot.cliente_nombre ?? '',
+      'Mecánico': ot.mecanico_nombre ?? '',
+      'Ingreso': c.ingreso,
+      'Costo MO': c.costoMO,
+      'Costo Repuestos': c.costoReps,
+      'Ganancia': c.ganancia,
+      'Margen %': parseFloat(c.margen.toFixed(1)),
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(data);
+
+  // Ancho de columnas
+  ws['!cols'] = [
+    { wch: 12 }, { wch: 10 }, { wch: 22 }, { wch: 18 },
+    { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 10 },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Rentabilidad');
+  XLSX.writeFile(wb, `rentabilidad_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
 
 // ── Barra horizontal simple ───────────────────────────────────────────────────
 function Bar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
@@ -296,7 +334,7 @@ export default function RentabilidadPage() {
           <h1 className="text-2xl font-bold text-zinc-900">Rentabilidad</h1>
           <p className="text-zinc-500 text-sm mt-0.5">Costos y márgenes de las órdenes terminadas</p>
         </div>
-        {/* Filtro período */}
+        {/* Filtro período + exportar */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-1">
             {PERIODOS.map(p => (
@@ -316,6 +354,16 @@ export default function RentabilidadPage() {
             className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${mesFiltro ? 'bg-white border-zinc-900 text-zinc-900 shadow-sm' : 'bg-zinc-100 border-transparent text-zinc-500 hover:text-zinc-700'}`}
             title="Filtrar por mes"
           />
+          {data && otsFiltradas.length > 0 && (
+            <button
+              onClick={() => exportarExcel(otsFiltradas, data.valorHora, data.costoRepuestosPorOT, facturasMap, data.mecanicoFactores)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
+              title="Exportar a Excel"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Excel
+            </button>
+          )}
         </div>
       </div>
 

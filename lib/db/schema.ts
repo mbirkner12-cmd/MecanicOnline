@@ -35,6 +35,8 @@ export const mecanicos = sqliteTable('mecanicos', {
   nombre: text('nombre').notNull(),
   contrato_url: text('contrato_url'),
   activo: integer('activo', { mode: 'boolean' }).default(true).notNull(),
+  tipo_pago: text('tipo_pago', { enum: ['boleta', 'contrato'] }).default('contrato').notNull(),
+  factor_boleta: real('factor_boleta').default(0).notNull(),
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

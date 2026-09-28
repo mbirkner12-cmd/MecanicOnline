@@ -28,6 +28,8 @@ type Mecanico = {
   nombre: string;
   contrato_url: string | null;
   activo: boolean;
+  tipo_pago: 'boleta' | 'contrato';
+  factor_boleta: number;
   created_at: string;
 };
 
@@ -35,9 +37,17 @@ type FormData = {
   nombre: string;
   rut: string;
   contrato_url: string;
+  tipo_pago: 'boleta' | 'contrato';
+  factor_boleta: string;
 };
 
-const emptyForm: FormData = { nombre: '', rut: '', contrato_url: '' };
+const emptyForm: FormData = {
+  nombre: '',
+  rut: '',
+  contrato_url: '',
+  tipo_pago: 'contrato',
+  factor_boleta: '0',
+};
 
 export default function MecanicosPage() {
   const [mecanicos, setMecanicos] = useState<Mecanico[]>([]);
@@ -75,7 +85,13 @@ export default function MecanicosPage() {
 
   function openEditDialog(m: Mecanico) {
     setEditingId(m.id);
-    setForm({ nombre: m.nombre, rut: m.rut, contrato_url: m.contrato_url ?? '' });
+    setForm({
+      nombre: m.nombre,
+      rut: m.rut,
+      contrato_url: m.contrato_url ?? '',
+      tipo_pago: m.tipo_pago ?? 'contrato',
+      factor_boleta: String(m.factor_boleta ?? 0),
+    });
     setErrors({});
     setApiError(null);
     setDialogOpen(true);
@@ -99,7 +115,10 @@ export default function MecanicosPage() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          factor_boleta: parseFloat(form.factor_boleta) || 0,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -155,6 +174,7 @@ export default function MecanicosPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>RUT</TableHead>
                 <TableHead>Contrato</TableHead>
+                <TableHead>Pago</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -178,6 +198,22 @@ export default function MecanicosPage() {
                     ) : (
                       <span className="text-zinc-400 text-sm">—</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {m.tipo_pago === 'boleta' ? (
+                        <>
+                          <Badge variant="outline" className="text-blue-600 border-blue-300">
+                            Boleta
+                          </Badge>
+                          {m.factor_boleta > 0 && (
+                            <span className="text-xs text-zinc-400">+{m.factor_boleta}%</span>
+                          )}
+                        </>
+                      ) : (
+                        <Badge variant="secondary">Contrato</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={m.activo ? 'default' : 'secondary'}>
@@ -255,6 +291,52 @@ export default function MecanicosPage() {
                 placeholder="https://..."
               />
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Tipo de pago</Label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, tipo_pago: 'contrato' })}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
+                    form.tipo_pago === 'contrato'
+                      ? 'bg-zinc-900 text-white border-zinc-900'
+                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                  }`}
+                >
+                  Contrato
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, tipo_pago: 'boleta' })}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${
+                    form.tipo_pago === 'boleta'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                  }`}
+                >
+                  Boleta
+                </button>
+              </div>
+            </div>
+
+            {form.tipo_pago === 'boleta' && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="factor_boleta">Factor boleta (%)</Label>
+                <Input
+                  id="factor_boleta"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={form.factor_boleta}
+                  onChange={(e) => setForm({ ...form, factor_boleta: e.target.value })}
+                  placeholder="Ej: 12.5"
+                />
+                <p className="text-xs text-zinc-400">
+                  Porcentaje que se suma al costo MO · se actualiza anualmente
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

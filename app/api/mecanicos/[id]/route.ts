@@ -15,7 +15,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { rut, nombre, contrato_url, activo } = body;
+    const { rut, nombre, contrato_url, activo, tipo_pago, factor_boleta } = body;
 
     if (!rut || !nombre) {
       return NextResponse.json({ error: 'RUT y nombre son requeridos' }, { status: 400 });
@@ -23,7 +23,14 @@ export async function PUT(
 
     const [updated] = await db
       .update(mecanicos)
-      .set({ rut, nombre, contrato_url: contrato_url || null, activo: activo ?? true })
+      .set({
+        rut,
+        nombre,
+        contrato_url: contrato_url || null,
+        activo: activo ?? true,
+        tipo_pago: tipo_pago ?? 'contrato',
+        factor_boleta: factor_boleta != null ? parseFloat(factor_boleta) : 0,
+      })
       .where(eq(mecanicos.id, numId))
       .returning();
 

@@ -48,6 +48,7 @@ interface RentabilidadData {
   costoRepuestosPorOT: Record<number, { costo: number; venta: number }>;
   repuestosDetalle: RepuestoDetalle[];
   facturas: FacturaRow[];
+  mecanicoFactores: Record<number, { tipo_pago: string; factor_boleta: number }>;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -76,7 +77,8 @@ function calcOT(
   ot: OTRow,
   valorHora: number,
   costoRepsInvData: { costo: number; venta: number } | undefined,
-  facturasOT: FacturaRow[]
+  facturasOT: FacturaRow[],
+  factorBoleta = 0
 ) {
   const ingreso = ot.cot_total ?? 0;
   const ingresoMO = ot.cot_mo ?? 0;
@@ -87,7 +89,8 @@ function calcOT(
   } catch { /* */ }
 
   const h = ot.horas_trabajadas ?? horasAuto(ot.fecha_hora_inicio, ot.fecha_hora_fin);
-  const costoMO = ot.costo_mo_override !== null ? ot.costo_mo_override : h * valorHora;
+  const costoMOBase = ot.costo_mo_override !== null ? ot.costo_mo_override : h * valorHora;
+  const costoMO = factorBoleta > 0 ? costoMOBase * (1 + factorBoleta / 100) : costoMOBase;
 
   let costoRepsCotTotal = 0;
   try {
@@ -203,7 +206,8 @@ export default function RentabilidadPage() {
     let totalIngresoMO = 0, totalIngresoReps = 0;
 
     for (const ot of otsFiltradas) {
-      const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? []);
+      const factor = ot.mecanico_id != null ? (data.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
+      const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
       totalIngreso += c.ingreso;
       totalCostoMO += c.costoMO;
       totalCostoReps += c.costoReps;
@@ -223,7 +227,8 @@ export default function RentabilidadPage() {
     if (!data) return [];
     const map: Record<string, { nombre: string; totalMO: number; nOTs: number }> = {};
     for (const ot of otsFiltradas) {
-      const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? []);
+      const factor = ot.mecanico_id != null ? (data.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
+      const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
       const key = ot.mecanico_nombre ?? 'Sin asignar';
       if (!map[key]) map[key] = { nombre: key, totalMO: 0, nOTs: 0 };
       map[key].totalMO += c.costoMO;
@@ -444,7 +449,8 @@ export default function RentabilidadPage() {
                 </tr>
               ) : (
                 otsFiltradas.map(ot => {
-                  const c = calcOT(ot, data!.valorHora, data!.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? []);
+                  const factor = ot.mecanico_id != null ? (data!.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
+                  const c = calcOT(ot, data!.valorHora, data!.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
                   const rowMargenColor = c.margen > 30 ? 'text-green-600 bg-green-50' : c.margen > 10 ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50';
                   return (
                     <tr key={ot.id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">

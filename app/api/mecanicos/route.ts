@@ -16,7 +16,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { rut, nombre, contrato_url } = body;
+    const { rut, nombre, contrato_url, tipo_pago, factor_boleta } = body;
 
     if (!rut || !nombre) {
       return NextResponse.json({ error: 'RUT y nombre son requeridos' }, { status: 400 });
@@ -24,7 +24,13 @@ export async function POST(request: Request) {
 
     const [created] = await db
       .insert(mecanicos)
-      .values({ rut, nombre, contrato_url: contrato_url || null })
+      .values({
+        rut,
+        nombre,
+        contrato_url: contrato_url || null,
+        tipo_pago: tipo_pago ?? 'contrato',
+        factor_boleta: factor_boleta != null ? parseFloat(factor_boleta) : 0,
+      })
       .returning();
 
     return NextResponse.json(created, { status: 201 });

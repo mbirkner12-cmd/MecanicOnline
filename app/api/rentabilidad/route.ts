@@ -42,7 +42,7 @@ export async function GET() {
       .where(inArray(ordenes_trabajo.estado, ['listo_para_entregar', 'entregado']));
 
     if (ots.length === 0) {
-      return NextResponse.json({ ots: [], valorHora, costoRepuestosPorOT: {}, repuestosDetalle: [], facturas: [] });
+      return NextResponse.json({ ots: [], valorHora, costoRepuestosPorOT: {}, repuestosDetalle: [], facturas: [], mecanicoFactores: {} });
     }
 
     // Costos de repuestos de inventario agrupados por OT
@@ -86,7 +86,21 @@ export async function GET() {
 
     const facturas = facturasRaw.filter(f => f.ot_id !== null && otIds.includes(f.ot_id));
 
-    return NextResponse.json({ ots, valorHora, costoRepuestosPorOT, repuestosDetalle, facturas });
+    // Factores boleta por mecánico
+    const mecanicoRows = await db
+      .select({
+        id: mecanicos.id,
+        tipo_pago: mecanicos.tipo_pago,
+        factor_boleta: mecanicos.factor_boleta,
+      })
+      .from(mecanicos);
+
+    const mecanicoFactores: Record<number, { tipo_pago: string; factor_boleta: number }> = {};
+    for (const m of mecanicoRows) {
+      mecanicoFactores[m.id] = { tipo_pago: m.tipo_pago, factor_boleta: m.factor_boleta };
+    }
+
+    return NextResponse.json({ ots, valorHora, costoRepuestosPorOT, repuestosDetalle, facturas, mecanicoFactores });
   } catch (error) {
     console.error('GET /api/rentabilidad error:', error);
     return NextResponse.json({ error: 'Error al obtener datos de rentabilidad' }, { status: 500 });

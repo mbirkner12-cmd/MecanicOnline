@@ -237,11 +237,13 @@ export default function RentabilidadPage() {
     return Object.values(map).sort((a, b) => b.totalMO - a.totalMO);
   }, [data, otsFiltradas, facturasMap]);
 
-  // Top repuestos por costo — AI category when available, else simple normalization fallback
+  // Repuestos agrupados por nombre — inventario + cotización
   const topRepuestos = useMemo(() => {
     if (!data) return [];
-    const otIds = new Set(otsFiltradas.map(o => o.id));
     const map: Record<string, { display: string; total: number; nOTs: Set<number> }> = {};
+
+    // Inventario (ot_repuestos)
+    const otIds = new Set(otsFiltradas.map(o => o.id));
     for (const r of data.repuestosDetalle) {
       if (!otIds.has(r.ot_id)) continue;
       const display = categorias[r.nombre] ?? normalizeRepuestoNombre(r.nombre);
@@ -250,9 +252,26 @@ export default function RentabilidadPage() {
       map[key].total += r.cantidad * r.precio_costo_snapshot;
       map[key].nOTs.add(r.ot_id);
     }
+
+    // Cotización (cot_repuestos + costo_repuestos_cot)
+    for (const ot of otsFiltradas) {
+      try {
+        const repsCot = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ detalle: string; cantidad: number }>;
+        const costosCot = (JSON.parse(ot.costo_repuestos_cot ?? 'null') as (number | null)[] | null) ?? [];
+        repsCot.forEach((r, i) => {
+          const costo = costosCot[i];
+          if (!costo || costo <= 0 || !r.detalle) return;
+          const display = categorias[r.detalle] ?? normalizeRepuestoNombre(r.detalle);
+          const key = display.toLowerCase();
+          if (!map[key]) map[key] = { display, total: 0, nOTs: new Set() };
+          map[key].total += r.cantidad * costo;
+          map[key].nOTs.add(ot.id);
+        });
+      } catch { /* */ }
+    }
+
     return Object.entries(map)
       .sort(([, a], [, b]) => b.total - a.total)
-      .slice(0, 10)
       .map(([, v]) => ({ nombre: v.display, total: v.total, nOTs: v.nOTs.size }));
   }, [data, otsFiltradas, categorias]);
 

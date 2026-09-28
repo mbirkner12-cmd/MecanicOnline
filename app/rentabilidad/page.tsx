@@ -70,15 +70,33 @@ function horasAuto(inicio: string | null, fin: string | null): number {
   return Math.max(0, ms / 3_600_000);
 }
 
-const SKIP_WORDS = new Set(['de', 'del', 'para', 'el', 'la', 'los', 'las', 'un', 'una', 'y', 'e', 'o', 'en', 'con', 'sin', 'a', 'al', 'por']);
+const ACEITE_RE = /\baceite|lubricante|5w|10w|0w|15w|atf|dexron\b/i;
+const FILTRO_RE = /\bfiltro|filter\b/i;
+const FRENO_RE = /\bpastilla|zapata|disco\s*(freno|brake)|rotor|l[ií]quido\s*freno\b/i;
+const SUSPENSION_RE = /\bamortiguador|muelle|resorte|bieleta|r[oó]tula|silent\s*block|brazo\b/i;
+const BUJIA_RE = /\bbuj[íi]a\b/i;
+const DISTRIBUCION_RE = /\bdistribuci[oó]n|timing\b/i;
+const EMBRAGUE_RE = /\bembrague|clutch\b/i;
+const REFRIGERACION_RE = /\brefrigerante|anticongelante|coolant|termostato\b/i;
+const NEUMATICO_RE = /\bneumático|neumatico|cubierta|llanta|tire\b/i;
+const BATERIA_RE = /\bbater[íi]a|battery\b/i;
+const ELECTRICO_RE = /\balternador|arranque|starter|sensor|cable|fusible|foco|ampoll[ae]\b/i;
+const DIRECCION_RE = /\bdirecci[oó]n|cremallera|terminal\b/i;
 
 function normalizeRepuestoNombre(nombre: string): string {
-  const words = nombre
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(w => w && !SKIP_WORDS.has(w));
-  const key = words.slice(0, 2).join(' ');
-  return key.replace(/\b\w/g, c => c.toUpperCase());
+  if (ACEITE_RE.test(nombre)) return 'Aceites';
+  if (FILTRO_RE.test(nombre)) return 'Filtros';
+  if (FRENO_RE.test(nombre)) return 'Frenos';
+  if (SUSPENSION_RE.test(nombre)) return 'Suspensión';
+  if (BUJIA_RE.test(nombre)) return 'Bujías';
+  if (DISTRIBUCION_RE.test(nombre)) return 'Distribución';
+  if (EMBRAGUE_RE.test(nombre)) return 'Embrague';
+  if (REFRIGERACION_RE.test(nombre)) return 'Refrigeración';
+  if (NEUMATICO_RE.test(nombre)) return 'Neumáticos';
+  if (BATERIA_RE.test(nombre)) return 'Baterías';
+  if (ELECTRICO_RE.test(nombre)) return 'Eléctrico';
+  if (DIRECCION_RE.test(nombre)) return 'Dirección';
+  return 'Otros';
 }
 
 function calcOT(

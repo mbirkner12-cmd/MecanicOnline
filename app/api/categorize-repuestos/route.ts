@@ -9,32 +9,24 @@ export async function POST(req: NextRequest) {
     if (!nombres || nombres.length === 0) return NextResponse.json({});
 
     const prompt = `Eres un experto en repuestos automotrices de un taller mecánico chileno.
-Te daré una lista de nombres de repuestos. Debes asignar a cada uno una categoría genérica muy corta (1-3 palabras), siguiendo estas reglas estrictas:
+Te daré una lista de nombres de repuestos. Asigna a cada uno UNA de las siguientes categorías amplias. Sé muy agresivo agrupando: ignora marcas, viscosidades, subtipos y especificaciones.
 
-REGLAS:
-1. Ignora completamente: marcas (Castrol, Bosch, NGK, Monroe, Gates, Brembo, KYB, Valvoline, Mobil, ACDelco, etc.), modelos de auto, patentes, viscosidades (5W30, 10W40, 0W20, etc.), especificaciones técnicas, números de parte y año.
-2. Agrupa por función, no por variante. Distintas viscosidades de aceite = misma categoría "Aceite Motor".
-3. Usa siempre la misma categoría para el mismo tipo de pieza aunque los nombres difieran ligeramente.
+CATEGORÍAS (úsalas exactamente como están escritas):
+- "Aceites" → TODO tipo de aceite: motor (5W30, 10W40, sintético, semi, etc.), caja, diferencial, dirección, hidráulico, ATF
+- "Filtros" → TODO tipo de filtro: aceite, aire, polen, habitáculo, combustible, diesel, bencina, gasolina, petróleo, kit de filtros
+- "Frenos" → pastillas, zapatas, discos, rotores, líquido de frenos, cilindros de freno
+- "Suspensión" → amortiguadores, muelles, resortes, bieletas, rótulas, silent block, brazos
+- "Bujías" → bujías de encendido (cualquier tipo o marca)
+- "Distribución" → correa, cadena, kit o tensor de distribución
+- "Embrague" → disco, plato, kit de embrague
+- "Refrigeración" → refrigerante, anticongelante, termostato, mangueras de agua
+- "Neumáticos" → neumáticos, cubiertas, llantas
+- "Baterías" → baterías de auto (cualquier marca o amperaje)
+- "Eléctrico" → alternador, motor arranque, sensores, cables, fusibles, focos
+- "Dirección" → cremallera, bomba dirección, flexible, terminales de dirección
+- "Otros" → cualquier repuesto que no encaje en las categorías anteriores
 
-Categorías estándar a usar (usa estas cuando apliquen):
-- "Aceite Motor" → cualquier aceite de motor (todos los 5W30, 10W40, sintéticos, etc.)
-- "Aceite Caja" → aceite de transmisión manual o diferencial
-- "Aceite Transmisión" → aceite ATF, transmisión automática
-- "Filtro Aceite" → filtros de aceite de motor
-- "Filtro Aire" → filtros de aire del motor
-- "Filtro Polen" → filtros de habitáculo/cabina/polen
-- "Filtro Combustible" → filtros de bencina/diesel/petróleo
-- "Pastillas Freno" → pastillas o zapatas de freno
-- "Disco Freno" → discos o rotores de freno
-- "Bujías" → bujías de encendido
-- "Distribución" → correa, kit o tensor de distribución
-- "Amortiguadores" → amortiguadores o suspensión
-- "Refrigerante" → líquido refrigerante, anticongelante
-- "Líquido Frenos" → líquido de frenos DOT
-- "Dirección" → aceite o bomba de dirección
-- "Embrague" → kit, disco o plato embrague
-
-Responde SOLO con un JSON objeto válido. Sin markdown, sin explicaciones. Clave: nombre exacto tal como aparece en la lista. Valor: categoría genérica.
+Responde SOLO con un JSON objeto válido. Sin markdown, sin explicaciones. Clave: nombre exacto tal como aparece en la lista. Valor: una de las categorías de arriba.
 
 Repuestos:
 ${nombres.map((n, i) => `${i + 1}. ${n}`).join('\n')}`;

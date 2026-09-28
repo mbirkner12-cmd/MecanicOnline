@@ -202,7 +202,20 @@ export default function RentabilidadPage() {
     ]).then(([d, g]) => {
         setData(d);
         setGastos(g.filter(x => x.activo));
-        const uniqueNames = [...new Set(d.repuestosDetalle.map(r => r.nombre).filter(Boolean))];
+
+        // Recolectar nombres únicos de inventario + cotizaciones
+        const namesSet = new Set<string>();
+        for (const r of d.repuestosDetalle) {
+          if (r.nombre) namesSet.add(r.nombre);
+        }
+        for (const ot of d.ots) {
+          try {
+            const reps = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ detalle: string }>;
+            for (const r of reps) { if (r.detalle) namesSet.add(r.detalle); }
+          } catch { /* */ }
+        }
+        const uniqueNames = [...namesSet];
+
         if (uniqueNames.length > 0) {
           fetch('/api/categorize-repuestos', {
             method: 'POST',

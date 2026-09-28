@@ -72,6 +72,8 @@ interface OTDetalle {
     id: number;
     nombre: string;
     rut: string;
+    tipo_pago: 'boleta' | 'contrato' | null;
+    factor_boleta: number | null;
   } | null;
   puesto: {
     id: number;
@@ -836,6 +838,7 @@ export default function OTDetallePage() {
                 costoTotalOverride={ot.costo_total_override}
                 costoRepuestosCot={ot.costo_repuestos_cot}
                 costoRepuestosOverride={ot.costo_repuestos_override}
+                factorBoleta={ot.mecanico?.tipo_pago === 'boleta' ? (ot.mecanico.factor_boleta ?? 0) : 0}
               />
             </CardContent>
           </Card>

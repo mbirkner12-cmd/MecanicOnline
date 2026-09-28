@@ -76,6 +76,8 @@ async function getOTById(id: number) {
         id: mecanicos.id,
         nombre: mecanicos.nombre,
         rut: mecanicos.rut,
+        tipo_pago: mecanicos.tipo_pago,
+        factor_boleta: mecanicos.factor_boleta,
       },
       puesto: {
         id: puestos.id,

@@ -48,6 +48,7 @@ interface Props {
   costoTotalOverride?: number | null;
   costoRepuestosCot?: string | null;
   costoRepuestosOverride?: number | null;
+  factorBoleta?: number;
 }
 
 function formatCLP(n: number) {
@@ -68,7 +69,7 @@ function formatHoras(h: number) {
   return `${hh}h ${mm}min`;
 }
 
-export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle, costoTotalOverride, costoRepuestosCot, costoRepuestosOverride }: Props) {
+export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horasTrabajadas, costoMoOverride, costoMoDetalle, costoTotalOverride, costoRepuestosCot, costoRepuestosOverride, factorBoleta = 0 }: Props) {
   const [repuestos, setRepuestos] = useState<OTRepuesto[]>([]);
   const [facturas, setFacturas] = useState<FacturaItem[]>([]);
   const [valorHora, setValorHora] = useState(0);
@@ -330,7 +331,8 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   }, 0);
   const costoRepuestosCalculado = costoRepuestos + costoRepuestosCotTotal + costoFacturasNoAsignadas;
   const costoRepuestosEfectivo = repuestosTotalGuardado !== null ? repuestosTotalGuardado : costoRepuestosCalculado;
-  const costoMoObra = montoGuardado !== null ? montoGuardado : horasEfectivas * valorHora;
+  const costoMoBase = montoGuardado !== null ? montoGuardado : horasEfectivas * valorHora;
+  const costoMoObra = factorBoleta > 0 ? costoMoBase * (1 + factorBoleta / 100) : costoMoBase;
   const totalCostosCalculado = costoRepuestosEfectivo + costoMoObra;
   // Total override tiene precedencia sobre el calculado
   const totalCostos = totalGuardado !== null ? totalGuardado : totalCostosCalculado;
@@ -610,6 +612,9 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
               <div className="flex items-center gap-1.5 text-zinc-600">
                 <Clock className="h-3.5 w-3.5" />
                 <span>Horas hombre</span>
+                {factorBoleta > 0 && (
+                  <span className="text-xs text-blue-500 font-normal">(+{factorBoleta}% boleta)</span>
+                )}
               </div>
               <span className="font-medium">{formatCLP(costoMoObra)}</span>
             </div>

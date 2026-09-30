@@ -289,6 +289,7 @@ export default function CobrosPage() {
   const [cobros, setCobros] = useState<CobroRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'todos' | 'pendiente' | 'pagado'>('todos');
+  const [orden, setOrden] = useState<'numero' | 'fecha'>('numero');
   const [actualizando, setActualizando] = useState<number | null>(null);
   const [detalleId, setDetalleId] = useState<number | null>(null);
 
@@ -318,11 +319,22 @@ export default function CobrosPage() {
     }
   }
 
-  const filtrados = cobros.filter(c => {
-    if (filtro === 'pendiente') return !c.pagado;
-    if (filtro === 'pagado') return c.pagado;
-    return true;
-  });
+  const filtrados = cobros
+    .filter(c => {
+      if (filtro === 'pendiente') return !c.pagado;
+      if (filtro === 'pagado') return c.pagado;
+      return true;
+    })
+    .sort((a, b) => {
+      if (orden === 'numero') {
+        const numA = parseInt(a.numero.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.numero.replace(/\D/g, '')) || 0;
+        return numB - numA;
+      }
+      const dateA = new Date(a.fecha_hora_fin ?? a.updated_at).getTime();
+      const dateB = new Date(b.fecha_hora_fin ?? b.updated_at).getTime();
+      return dateB - dateA;
+    });
 
   const totalPendiente = cobros.filter(c => !c.pagado).reduce((s, c) => s + (c.cotizacion?.total ?? 0) * 1.19, 0);
   const totalCobrado = cobros.filter(c => c.pagado).reduce((s, c) => s + (c.cotizacion?.total ?? 0) * 1.19, 0);
@@ -357,18 +369,34 @@ export default function CobrosPage() {
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-zinc-400" />
-          {(['todos', 'pendiente', 'pagado'] as const).map(f => (
+        {/* Filtros y orden */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-zinc-400" />
+            {(['todos', 'pendiente', 'pagado'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFiltro(f)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filtro === f ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+              >
+                {f === 'todos' ? 'Todos' : f === 'pendiente' ? 'Pendientes' : 'Pagados'}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-1 ml-auto">
             <button
-              key={f}
-              onClick={() => setFiltro(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filtro === f ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+              onClick={() => setOrden('numero')}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${orden === 'numero' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
             >
-              {f === 'todos' ? 'Todos' : f === 'pendiente' ? 'Pendientes' : 'Pagados'}
+              N° OT
             </button>
-          ))}
+            <button
+              onClick={() => setOrden('fecha')}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${orden === 'fecha' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+            >
+              Fecha
+            </button>
+          </div>
         </div>
 
         {/* Tabla */}

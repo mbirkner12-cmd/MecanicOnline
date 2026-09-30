@@ -116,7 +116,7 @@ function calcOT(
 
   const h = ot.horas_trabajadas ?? horasAuto(ot.fecha_hora_inicio, ot.fecha_hora_fin);
   const costoMOBase = ot.costo_mo_override !== null ? ot.costo_mo_override : h * valorHora;
-  const costoMO = factorBoleta > 0 ? costoMOBase * (1 + factorBoleta / 100) : costoMOBase;
+  const costoMO = factorBoleta > 0 ? costoMOBase / (1 - factorBoleta / 100) : costoMOBase;
 
   let costoRepsCotTotal = 0;
   try {

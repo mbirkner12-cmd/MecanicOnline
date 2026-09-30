@@ -332,7 +332,7 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
   const costoRepuestosCalculado = costoRepuestos + costoRepuestosCotTotal + costoFacturasNoAsignadas;
   const costoRepuestosEfectivo = repuestosTotalGuardado !== null ? repuestosTotalGuardado : costoRepuestosCalculado;
   const costoMoBase = montoGuardado !== null ? montoGuardado : horasEfectivas * valorHora;
-  const costoMoObra = factorBoleta > 0 ? costoMoBase * (1 + factorBoleta / 100) : costoMoBase;
+  const costoMoObra = factorBoleta > 0 ? costoMoBase / (1 - factorBoleta / 100) : costoMoBase;
   const totalCostosCalculado = costoRepuestosEfectivo + costoMoObra;
   // Total override tiene precedencia sobre el calculado
   const totalCostos = totalGuardado !== null ? totalGuardado : totalCostosCalculado;

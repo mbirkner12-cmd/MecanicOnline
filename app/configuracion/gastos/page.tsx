@@ -13,15 +13,16 @@ type GastoEstructura = {
   id: number;
   nombre: string;
   monto_mensual: number;
-  tipo: 'fijo' | 'gav';
+  tipo: 'fijo' | 'gav' | 'puntual';
+  mes: string | null;
   activo: boolean;
   created_at: string;
 };
 
-type FormData = { nombre: string; monto_mensual: string; tipo: 'fijo' | 'gav' };
-type GastoImportado = { nombre: string; monto_mensual: number; tipo: 'fijo' | 'gav' };
+type FormData = { nombre: string; monto_mensual: string; tipo: 'fijo' | 'gav' | 'puntual'; mes: string };
+type GastoImportado = { nombre: string; monto_mensual: number; tipo: 'fijo' | 'gav' | 'puntual' };
 
-const emptyForm: FormData = { nombre: '', monto_mensual: '', tipo: 'fijo' };
+const emptyForm: FormData = { nombre: '', monto_mensual: '', tipo: 'fijo', mes: '' };
 
 function formatCLP(n: number) {
   return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(n);
@@ -95,13 +96,14 @@ export default function GastosEstructuraPage() {
   }
   function openEdit(g: GastoEstructura) {
     setEditingId(g.id);
-    setForm({ nombre: g.nombre, monto_mensual: String(g.monto_mensual), tipo: g.tipo });
+    setForm({ nombre: g.nombre, monto_mensual: String(g.monto_mensual), tipo: g.tipo, mes: g.mes ?? '' });
     setErrors({}); setApiError(null); setDialogOpen(true);
   }
   function validate() {
     const e: Partial<FormData> = {};
     if (!form.nombre.trim()) e.nombre = 'Requerido';
     if (!form.monto_mensual || isNaN(parseFloat(form.monto_mensual))) e.monto_mensual = 'Ingresa un monto válido';
+    if (form.tipo === 'puntual' && !form.mes) e.mes = 'Selecciona el mes';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -113,7 +115,11 @@ export default function GastosEstructuraPage() {
       const res = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, monto_mensual: parseFloat(form.monto_mensual) }),
+        body: JSON.stringify({
+          ...form,
+          monto_mensual: parseFloat(form.monto_mensual),
+          mes: form.tipo === 'puntual' ? form.mes : null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setApiError(data.error ?? 'Error'); return; }
@@ -207,8 +213,15 @@ export default function GastosEstructuraPage() {
 
   const fijos = gastos.filter(g => g.tipo === 'fijo');
   const gavs = gastos.filter(g => g.tipo === 'gav');
+  const puntuales = gastos.filter(g => g.tipo === 'puntual');
   const totalFijos = fijos.reduce((s, g) => s + g.monto_mensual, 0);
   const totalGav = gavs.reduce((s, g) => s + g.monto_mensual, 0);
+
+  function formatMes(mes: string | null) {
+    if (!mes) return '';
+    const [y, m] = mes.split('-');
+    return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -249,20 +262,30 @@ export default function GastosEstructuraPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {[{ label: 'Costos fijos', items: fijos, total: totalFijos }, { label: 'GAV', items: gavs, total: totalGav }].map(group => (
+          {[
+            { label: 'Costos fijos', items: fijos, total: totalFijos, showTotal: true },
+            { label: 'GAV', items: gavs, total: totalGav, showTotal: true },
+            { label: 'Gastos puntuales', items: puntuales, total: 0, showTotal: false },
+          ].map(group => (
             group.items.length > 0 && (
               <div key={group.label} className="rounded-lg border border-zinc-200 bg-white overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-zinc-100 bg-zinc-50 flex items-center justify-between">
                   <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{group.label}</span>
-                  <span className="text-xs font-semibold text-zinc-700">{formatCLP(group.total)} / mes</span>
+                  {group.showTotal && <span className="text-xs font-semibold text-zinc-700">{formatCLP(group.total)} / mes</span>}
                 </div>
                 <table className="w-full text-sm">
                   <tbody>
                     {group.items.map(g => (
                       <tr key={g.id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
                         <td className="px-4 py-2.5 font-medium text-zinc-800">{g.nombre}</td>
+                        <td className="px-4 py-2.5 text-zinc-500 text-xs">
+                          {g.tipo === 'puntual' && g.mes && (
+                            <span className="capitalize">{formatMes(g.mes)}</span>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 text-right text-zinc-700 font-medium">
-                          {formatCLP(g.monto_mensual)}<span className="text-zinc-400 font-normal text-xs ml-1">/ mes</span>
+                          {formatCLP(g.monto_mensual)}
+                          {g.tipo !== 'puntual' && <span className="text-zinc-400 font-normal text-xs ml-1">/ mes</span>}
                         </td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-1.5">
@@ -305,16 +328,37 @@ export default function GastosEstructuraPage() {
             <div className="flex flex-col gap-1.5">
               <Label>Tipo</Label>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setForm({ ...form, tipo: 'fijo' })}
+                <button type="button" onClick={() => setForm({ ...form, tipo: 'fijo', mes: '' })}
                   className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${form.tipo === 'fijo' ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'}`}>
                   Costo fijo
                 </button>
-                <button type="button" onClick={() => setForm({ ...form, tipo: 'gav' })}
+                <button type="button" onClick={() => setForm({ ...form, tipo: 'gav', mes: '' })}
                   className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${form.tipo === 'gav' ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'}`}>
                   GAV
                 </button>
+                <button type="button" onClick={() => setForm({ ...form, tipo: 'puntual' })}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium border transition-colors ${form.tipo === 'puntual' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'}`}>
+                  Puntual
+                </button>
               </div>
+              {form.tipo === 'puntual' && (
+                <p className="text-xs text-zinc-400">Se aplica solo al mes seleccionado, no es recurrente.</p>
+              )}
             </div>
+
+            {form.tipo === 'puntual' && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="mes">Mes *</Label>
+                <input
+                  id="mes"
+                  type="month"
+                  value={form.mes}
+                  onChange={e => setForm({ ...form, mes: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                />
+                {(errors as Record<string, string>).mes && <p className="text-xs text-red-500">{(errors as Record<string, string>).mes}</p>}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancelar</Button>

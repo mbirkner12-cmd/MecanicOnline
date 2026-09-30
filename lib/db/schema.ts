@@ -249,7 +249,8 @@ export const gastos_estructura = sqliteTable('gastos_estructura', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   nombre: text('nombre').notNull(),
   monto_mensual: real('monto_mensual').notNull().default(0),
-  tipo: text('tipo', { enum: ['fijo', 'gav'] }).notNull().default('fijo'),
+  tipo: text('tipo', { enum: ['fijo', 'gav', 'puntual'] }).notNull().default('fijo'),
+  mes: text('mes'), // 'YYYY-MM' — solo para tipo 'puntual'
   activo: integer('activo', { mode: 'boolean' }).default(true).notNull(),
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });

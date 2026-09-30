@@ -11,11 +11,15 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const numId = parseInt(id);
     if (isNaN(numId)) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
 
-    const body = await req.json() as { nombre?: string; monto_mensual?: number; tipo?: 'fijo' | 'gav'; activo?: boolean };
+    const body = await req.json() as { nombre?: string; monto_mensual?: number; tipo?: 'fijo' | 'gav' | 'puntual'; mes?: string | null; activo?: boolean };
     const updates: Record<string, unknown> = {};
     if (body.nombre !== undefined) updates.nombre = body.nombre.trim();
     if (body.monto_mensual !== undefined) updates.monto_mensual = body.monto_mensual;
-    if (body.tipo !== undefined) updates.tipo = body.tipo;
+    if (body.tipo !== undefined) {
+      updates.tipo = body.tipo;
+      updates.mes = body.tipo === 'puntual' ? (body.mes ?? null) : null;
+    }
+    if (body.mes !== undefined && body.tipo === undefined) updates.mes = body.mes;
     if (body.activo !== undefined) updates.activo = body.activo;
 
     await db.update(gastos_estructura).set(updates).where(eq(gastos_estructura.id, numId));

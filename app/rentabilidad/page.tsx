@@ -46,7 +46,8 @@ interface GastoEstructura {
   id: number;
   nombre: string;
   monto_mensual: number;
-  tipo: 'fijo' | 'gav';
+  tipo: 'fijo' | 'gav' | 'puntual';
+  mes: string | null;
   activo: boolean;
 }
 
@@ -566,10 +567,30 @@ export default function RentabilidadPage() {
 
       {/* ── Estado de Resultados ─────────────────────────────────────────── */}
       {stats && gastos.length > 0 && (() => {
+        // Determinar rango de meses del período para filtrar puntuales
+        const mesesEnRango = new Set<string>();
+        if (mesFiltro) {
+          mesesEnRango.add(mesFiltro);
+        } else {
+          const hoy = new Date();
+          const desde = periodo === 0
+            ? (otsFiltradas.length > 0
+              ? new Date(Math.min(...otsFiltradas.map(o => new Date(o.fecha_hora_fin ?? o.updated_at).getTime())))
+              : new Date(hoy.getFullYear(), hoy.getMonth() - 11, 1))
+            : new Date(hoy.getTime() - periodo * 24 * 3600 * 1000);
+          const cur = new Date(desde.getFullYear(), desde.getMonth(), 1);
+          while (cur <= hoy) {
+            mesesEnRango.add(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`);
+            cur.setMonth(cur.getMonth() + 1);
+          }
+        }
+
+        const gastosPuntuales = gastos.filter(g => g.tipo === 'puntual' && g.mes && mesesEnRango.has(g.mes));
+        const totalPuntuales = gastosPuntuales.reduce((s, g) => s + g.monto_mensual, 0);
         const totalFijos = gastos.filter(g => g.tipo === 'fijo').reduce((s, g) => s + g.monto_mensual * mesesPeriodo, 0);
         const totalGav = gastos.filter(g => g.tipo === 'gav').reduce((s, g) => s + g.monto_mensual * mesesPeriodo, 0);
         const margenBruto = stats.totalIngreso - stats.totalCosto;
-        const ebit = margenBruto - totalFijos - totalGav;
+        const ebit = margenBruto - totalFijos - totalGav - totalPuntuales;
         const margenBrutoPct = stats.totalIngreso > 0 ? (margenBruto / stats.totalIngreso) * 100 : 0;
         const margenNetoEEPct = stats.totalIngreso > 0 ? (ebit / stats.totalIngreso) * 100 : 0;
         const ResultIcon = ebit > 0 ? TrendingUp : ebit < 0 ? TrendingDown : Minus;
@@ -606,6 +627,14 @@ export default function RentabilidadPage() {
                 <Row key={g.id} label={g.nombre} value={g.monto_mensual * mesesPeriodo} indent />
               ))}
               {totalGav > 0 && <Row label="Total GAV" value={totalGav} bold separator />}
+              {gastosPuntuales.length > 0 && (
+                <>
+                  {gastosPuntuales.map(g => (
+                    <Row key={g.id} label={`${g.nombre}${g.mes ? ` (${g.mes.slice(0, 7)})` : ''}`} value={g.monto_mensual} indent />
+                  ))}
+                  <Row label="Total gastos puntuales" value={totalPuntuales} bold separator />
+                </>
+              )}
             </div>
             <div className={`mt-4 p-4 rounded-xl border ${resultBg} flex items-center justify-between`}>
               <div className="flex items-center gap-3">

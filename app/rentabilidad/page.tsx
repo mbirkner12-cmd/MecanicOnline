@@ -401,6 +401,33 @@ export default function RentabilidadPage() {
     return result;
   }, [data, otsFiltradas, categorias]);
 
+  // Consumo de insumos por categoría (desde ot_repuestos + cot_repuestos)
+  const consumoPorCategoria = useMemo(() => {
+    if (!data) return {} as Record<string, { unidad: string; totalCantidad: number }>;
+    const map: Record<string, { unidad: string; totalCantidad: number }> = {};
+    const otIds = new Set(otsFiltradas.map(o => o.id));
+
+    const addQty = (nombre: string, cantidad: number) => {
+      if (!nombre || cantidad <= 0) return;
+      const cat = categorias[nombre] ?? normalizeRepuestoNombre(nombre);
+      const unidad = (cat === 'Aceites' || cat === 'Refrigeración') ? 'L' : 'uds.';
+      if (!map[cat]) map[cat] = { unidad, totalCantidad: 0 };
+      map[cat].totalCantidad += cantidad;
+    };
+
+    for (const r of data.repuestosDetalle) {
+      if (otIds.has(r.ot_id)) addQty(r.nombre, r.cantidad);
+    }
+    for (const ot of otsFiltradas) {
+      try {
+        const reps = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ detalle: string; cantidad: number }>;
+        for (const r of reps) addQty(r.detalle, r.cantidad);
+      } catch { /* */ }
+    }
+
+    return map;
+  }, [data, otsFiltradas, categorias]);
+
   // Cuántos meses cubre el período seleccionado (para prorratear costos fijos)
   const mesesPeriodo = useMemo(() => {
     if (mesFiltro) return 1;
@@ -679,55 +706,82 @@ export default function RentabilidadPage() {
         );
       })()}
 
-      {/* ── Compras del período ──────────────────────────────────────────── */}
-      {insumos.length > 0 && (
-        <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4 text-zinc-400" />
-            <h2 className="text-sm font-semibold text-zinc-700">Compras del período (facturas)</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-100 bg-zinc-50">
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-zinc-500">Categoría</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Cantidad</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Gasto total</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Precio promedio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {insumos.map(ins => (
-                  <tr key={ins.cat} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
-                    <td className="px-5 py-2.5 font-medium text-zinc-700">{ins.cat}</td>
-                    <td className="px-5 py-2.5 text-right tabular-nums text-zinc-600">
-                      {ins.unidad === 'L'
-                        ? `${ins.totalCantidad.toFixed(1)} L`
-                        : `${Math.round(ins.totalCantidad)} uds.`}
-                    </td>
-                    <td className="px-5 py-2.5 text-right tabular-nums font-medium text-zinc-800">
-                      {formatCLP(ins.totalGasto)}
-                    </td>
-                    <td className="px-5 py-2.5 text-right tabular-nums text-zinc-500">
-                      {ins.precioPromedio > 0 ? `${formatCLP(ins.precioPromedio)} / ${ins.unidad}` : '—'}
-                    </td>
+      {/* ── Consumo vs Compras ───────────────────────────────────────────── */}
+      {(() => {
+        // Merge consumo (OTs) + gasto (facturas) por categoría
+        const allCats = new Set([
+          ...Object.keys(consumoPorCategoria),
+          ...insumos.map(i => i.cat),
+        ]);
+        const rows = [...allCats].map(cat => {
+          const consumo = consumoPorCategoria[cat];
+          const compra = insumos.find(i => i.cat === cat);
+          const unidad = consumo?.unidad ?? compra?.unidad ?? 'uds.';
+          const cantidadUsada = consumo?.totalCantidad ?? 0;
+          const gastoFacturas = compra?.totalGasto ?? 0;
+          const precioPorUnidad = cantidadUsada > 0 && gastoFacturas > 0
+            ? gastoFacturas / cantidadUsada : 0;
+          return { cat, unidad, cantidadUsada, gastoFacturas, precioPorUnidad };
+        }).filter(r => r.cantidadUsada > 0 || r.gastoFacturas > 0)
+          .sort((a, b) => b.gastoFacturas - a.gastoFacturas || b.cantidadUsada - a.cantidadUsada);
+
+        if (rows.length === 0) return null;
+
+        return (
+          <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-zinc-400" />
+              <h2 className="text-sm font-semibold text-zinc-700">Consumo vs Compras</h2>
+              <span className="ml-auto text-xs text-zinc-400">Consumo desde OTs · Gasto desde facturas</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-100 bg-zinc-50">
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-zinc-500">Categoría</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Consumido (OTs)</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Gasto (facturas)</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Precio / unidad</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-zinc-200 bg-zinc-50 font-semibold">
-                  <td className="px-5 py-2.5 text-xs text-zinc-500">Total</td>
-                  <td />
-                  <td className="px-5 py-2.5 text-right text-zinc-800">
-                    {formatCLP(insumos.reduce((s, i) => s + i.totalGasto, 0))}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map(r => (
+                    <tr key={r.cat} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
+                      <td className="px-5 py-2.5 font-medium text-zinc-700">{r.cat}</td>
+                      <td className="px-5 py-2.5 text-right tabular-nums text-zinc-600">
+                        {r.cantidadUsada > 0
+                          ? r.unidad === 'L'
+                            ? `${r.cantidadUsada.toFixed(1)} L`
+                            : `${Math.round(r.cantidadUsada)} uds.`
+                          : <span className="text-zinc-300">—</span>}
+                      </td>
+                      <td className="px-5 py-2.5 text-right tabular-nums font-medium text-zinc-800">
+                        {r.gastoFacturas > 0 ? formatCLP(r.gastoFacturas) : <span className="text-zinc-300">—</span>}
+                      </td>
+                      <td className="px-5 py-2.5 text-right tabular-nums text-zinc-500">
+                        {r.precioPorUnidad > 0
+                          ? `${formatCLP(r.precioPorUnidad)} / ${r.unidad}`
+                          : <span className="text-zinc-300">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {rows.some(r => r.gastoFacturas > 0) && (
+                  <tfoot>
+                    <tr className="border-t-2 border-zinc-200 bg-zinc-50 font-semibold">
+                      <td className="px-5 py-2.5 text-xs text-zinc-500" colSpan={2}>Total gasto en facturas</td>
+                      <td className="px-5 py-2.5 text-right text-zinc-800">
+                        {formatCLP(rows.reduce((s, r) => s + r.gastoFacturas, 0))}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Tabla por OT ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">

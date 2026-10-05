@@ -343,11 +343,11 @@ export default function RentabilidadPage() {
     return Object.values(map).sort((a, b) => b.totalMO - a.totalMO);
   }, [data, otsFiltradas, facturasMap]);
 
-  // Consumo de insumos por categoría (desde ot_repuestos + cot_repuestos)
+  // Consumo de insumos por categoría (solo desde cot_repuestos para evitar doble conteo
+  // con ot_repuestos, que descuenta el mismo ítem del inventario)
   const consumoPorCategoria = useMemo(() => {
     if (!data) return {} as Record<string, { unidad: string; totalCantidad: number }>;
     const map: Record<string, { unidad: string; totalCantidad: number }> = {};
-    const otIds = new Set(otsFiltradas.map(o => o.id));
 
     const addQty = (nombre: string, cantidad: number) => {
       if (!nombre || cantidad <= 0) return;
@@ -357,9 +357,6 @@ export default function RentabilidadPage() {
       map[cat].totalCantidad += cantidad;
     };
 
-    for (const r of data.repuestosDetalle) {
-      if (otIds.has(r.ot_id)) addQty(r.nombre, r.cantidad);
-    }
     for (const ot of otsFiltradas) {
       try {
         const reps = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ detalle: string; cantidad: number }>;

@@ -222,6 +222,7 @@ export default function RentabilidadPage() {
   const [mesFiltro, setMesFiltro] = useState<string>(''); // 'YYYY-MM' o vacío
   const [categorias, setCategorias] = useState<Record<string, string>>({});
   const [expandedOTs, setExpandedOTs] = useState<Set<number>>(new Set());
+  const [expandedInsumos, setExpandedInsumos] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     Promise.all([
@@ -343,24 +344,22 @@ export default function RentabilidadPage() {
     return Object.values(map).sort((a, b) => b.totalMO - a.totalMO);
   }, [data, otsFiltradas, facturasMap]);
 
-  // Consumo de insumos por categoría (solo desde cot_repuestos para evitar doble conteo
-  // con ot_repuestos, que descuenta el mismo ítem del inventario)
+  // Consumo de insumos por categoría (solo desde cot_repuestos para evitar doble conteo)
   const consumoPorCategoria = useMemo(() => {
-    if (!data) return {} as Record<string, { unidad: string; totalCantidad: number }>;
-    const map: Record<string, { unidad: string; totalCantidad: number }> = {};
-
-    const addQty = (nombre: string, cantidad: number) => {
-      if (!nombre || cantidad <= 0) return;
-      const cat = categorias[nombre] ?? normalizeRepuestoNombre(nombre);
-      const unidad = (cat === 'Aceites' || cat === 'Refrigeración') ? 'L' : 'uds.';
-      if (!map[cat]) map[cat] = { unidad, totalCantidad: 0 };
-      map[cat].totalCantidad += cantidad;
-    };
+    if (!data) return {} as Record<string, { unidad: string; totalCantidad: number; items: Array<{ otNumero: string; detalle: string; cantidad: number }> }>;
+    const map: Record<string, { unidad: string; totalCantidad: number; items: Array<{ otNumero: string; detalle: string; cantidad: number }> }> = {};
 
     for (const ot of otsFiltradas) {
       try {
         const reps = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ detalle: string; cantidad: number }>;
-        for (const r of reps) addQty(r.detalle, r.cantidad);
+        for (const r of reps) {
+          if (!r.detalle || r.cantidad <= 0) continue;
+          const cat = categorias[r.detalle] ?? normalizeRepuestoNombre(r.detalle);
+          const unidad = (cat === 'Aceites' || cat === 'Refrigeración') ? 'L' : 'uds.';
+          if (!map[cat]) map[cat] = { unidad, totalCantidad: 0, items: [] };
+          map[cat].totalCantidad += r.cantidad;
+          map[cat].items.push({ otNumero: ot.numero, detalle: r.detalle, cantidad: r.cantidad });
+        }
       } catch { /* */ }
     }
 
@@ -637,7 +636,6 @@ export default function RentabilidadPage() {
 
       {/* ── Consumo vs Compras ───────────────────────────────────────────── */}
       {(() => {
-        // Merge consumo (OTs) + gasto (facturas) por categoría
         const allCats = new Set([
           ...Object.keys(consumoPorCategoria),
           ...insumos.map(i => i.cat),
@@ -650,7 +648,8 @@ export default function RentabilidadPage() {
           const gastoFacturas = compra?.totalGasto ?? 0;
           const precioPorUnidad = cantidadUsada > 0 && gastoFacturas > 0
             ? gastoFacturas / cantidadUsada : 0;
-          return { cat, unidad, cantidadUsada, gastoFacturas, precioPorUnidad };
+          const items = consumo?.items ?? [];
+          return { cat, unidad, cantidadUsada, gastoFacturas, precioPorUnidad, items };
         }).filter(r => r.cantidadUsada > 0 || r.gastoFacturas > 0)
           .sort((a, b) => b.gastoFacturas - a.gastoFacturas || b.cantidadUsada - a.cantidadUsada);
 
@@ -667,39 +666,80 @@ export default function RentabilidadPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-100 bg-zinc-50">
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-zinc-500">Categoría</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Consumido (OTs)</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Gasto (facturas)</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Precio / unidad</th>
+                    <th className="w-8 px-2 py-2.5" />
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500">Categoría</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-zinc-500">Consumido (OTs)</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-zinc-500">Gasto (facturas)</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-zinc-500">Precio / unidad</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(r => (
-                    <tr key={r.cat} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
-                      <td className="px-5 py-2.5 font-medium text-zinc-700">{r.cat}</td>
-                      <td className="px-5 py-2.5 text-right tabular-nums text-zinc-600">
-                        {r.cantidadUsada > 0
-                          ? r.unidad === 'L'
-                            ? `${r.cantidadUsada.toFixed(1)} L`
-                            : `${Math.round(r.cantidadUsada)} uds.`
-                          : <span className="text-zinc-300">—</span>}
-                      </td>
-                      <td className="px-5 py-2.5 text-right tabular-nums font-medium text-zinc-800">
-                        {r.gastoFacturas > 0 ? formatCLP(r.gastoFacturas) : <span className="text-zinc-300">—</span>}
-                      </td>
-                      <td className="px-5 py-2.5 text-right tabular-nums text-zinc-500">
-                        {r.precioPorUnidad > 0
-                          ? `${formatCLP(r.precioPorUnidad)} / ${r.unidad}`
-                          : <span className="text-zinc-300">—</span>}
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.flatMap(r => {
+                    const isExpanded = expandedInsumos.has(r.cat);
+                    const toggleExpand = () => setExpandedInsumos(prev => {
+                      const next = new Set(prev);
+                      if (next.has(r.cat)) next.delete(r.cat); else next.add(r.cat);
+                      return next;
+                    });
+                    const mainRow = (
+                      <tr key={r.cat} className="border-b border-zinc-50 hover:bg-zinc-50/50">
+                        <td className="px-2 py-2.5 text-center">
+                          {r.items.length > 0 ? (
+                            <button onClick={toggleExpand} className="text-zinc-400 hover:text-zinc-700 transition-colors">
+                              {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                            </button>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-2.5 font-medium text-zinc-700">{r.cat}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-zinc-600">
+                          {r.cantidadUsada > 0
+                            ? r.unidad === 'L' ? `${r.cantidadUsada.toFixed(1)} L` : `${Math.round(r.cantidadUsada)} uds.`
+                            : <span className="text-zinc-300">—</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums font-medium text-zinc-800">
+                          {r.gastoFacturas > 0 ? formatCLP(r.gastoFacturas) : <span className="text-zinc-300">—</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-zinc-500">
+                          {r.precioPorUnidad > 0 ? `${formatCLP(r.precioPorUnidad)} / ${r.unidad}` : <span className="text-zinc-300">—</span>}
+                        </td>
+                      </tr>
+                    );
+                    if (!isExpanded || r.items.length === 0) return [mainRow];
+                    const detailRow = (
+                      <tr key={`${r.cat}-detail`} className="bg-zinc-50 border-b border-zinc-100">
+                        <td colSpan={5} className="px-6 py-2">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-zinc-400 border-b border-zinc-200">
+                                <th className="text-left pb-1.5 pr-4 font-medium">OT</th>
+                                <th className="text-left pb-1.5 pr-4 font-medium">Ítem</th>
+                                <th className="text-right pb-1.5 font-medium">Cantidad</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {r.items.map((item, i) => (
+                                <tr key={i} className="border-b border-zinc-100 last:border-0">
+                                  <td className="py-1 pr-4 font-mono text-zinc-500">{item.otNumero}</td>
+                                  <td className="py-1 pr-4 text-zinc-600">{item.detalle}</td>
+                                  <td className="py-1 text-right tabular-nums text-zinc-700 font-medium">
+                                    {r.unidad === 'L' ? `${item.cantidad} L` : `${item.cantidad} uds.`}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    );
+                    return [mainRow, detailRow];
+                  })}
                 </tbody>
                 {rows.some(r => r.gastoFacturas > 0) && (
                   <tfoot>
                     <tr className="border-t-2 border-zinc-200 bg-zinc-50 font-semibold">
-                      <td className="px-5 py-2.5 text-xs text-zinc-500" colSpan={2}>Total gasto en facturas</td>
-                      <td className="px-5 py-2.5 text-right text-zinc-800">
+                      <td colSpan={2} className="px-4 py-2.5 text-xs text-zinc-500">Total gasto en facturas</td>
+                      <td />
+                      <td className="px-4 py-2.5 text-right text-zinc-800">
                         {formatCLP(rows.reduce((s, r) => s + r.gastoFacturas, 0))}
                       </td>
                       <td />

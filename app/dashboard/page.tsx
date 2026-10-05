@@ -10,10 +10,31 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Car,
+  ClipboardCheck,
+  Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+interface Metricas {
+  vehiculosEstaSemana: number;
+  vehiculosSemanaAnterior: number;
+  vehiculosEsteMes: number;
+  vehiculosMesAnterior: number;
+  otsEntregadasEstaSemana: number;
+  otsEntregadasSemanaAnterior: number;
+  otsEntregadasEsteMes: number;
+  otsEntregadasMesAnterior: number;
+  ingresoEsteMes: number;
+  ingresoMesAnterior: number;
+  diasPromedioEnTaller: number;
+  diasPromedioCotAOT: number;
+}
 
 interface DashboardData {
   stats: {
@@ -24,6 +45,7 @@ interface DashboardData {
     listosParaEntregar: number;
     entregadosHoy: number;
   };
+  metricas: Metricas;
   puestos: Array<{
     puesto: { id: number; nombre: string; tipo: string };
     vehiculo: { patente: string; marca: string; modelo: string } | null;
@@ -65,6 +87,67 @@ function diasAtras(iso: string): string {
     (Date.now() - new Date(iso).getTime()) / 86400000
   );
   return days === 0 ? "hoy" : `${days}d`;
+}
+
+function formatCLPShort(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
+  return `$${Math.round(n)}`;
+}
+
+// ── MetricCard ────────────────────────────────────────────────────────────────
+
+interface MetricCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  current?: number;
+  previous?: number;
+  compLabel?: string;
+  sub?: string;
+  neutral?: boolean;
+}
+
+function MetricCard({ icon, label, value, current, previous, compLabel, sub, neutral }: MetricCardProps) {
+  let delta: number | null = null;
+  if (current !== undefined && previous !== undefined && previous > 0) {
+    delta = ((current - previous) / previous) * 100;
+  }
+  const up = delta !== null && delta > 0;
+  const down = delta !== null && delta < 0;
+  const DeltaIcon = up ? TrendingUp : down ? TrendingDown : Minus;
+  const deltaColor = neutral
+    ? (up ? 'text-zinc-500' : down ? 'text-zinc-500' : 'text-zinc-400')
+    : (up ? 'text-green-600' : down ? 'text-red-600' : 'text-zinc-400');
+  const deltaBg = neutral
+    ? 'bg-zinc-100'
+    : (up ? 'bg-green-50' : down ? 'bg-red-50' : 'bg-zinc-100');
+
+  return (
+    <div className="bg-white rounded-xl border border-zinc-200 p-4 flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5 text-zinc-400">
+        {icon}
+        <span className="text-xs font-medium text-zinc-500">{label}</span>
+      </div>
+      <p className="text-2xl font-bold text-zinc-900 leading-none">{value}</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        {delta !== null && (
+          <span className={`inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full ${deltaBg} ${deltaColor}`}>
+            <DeltaIcon className="h-3 w-3" />
+            {Math.abs(delta).toFixed(0)}%
+          </span>
+        )}
+        {current !== undefined && previous === 0 && current > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500">
+            <Minus className="h-3 w-3" />
+            nuevo
+          </span>
+        )}
+        {compLabel && <span className="text-xs text-zinc-400">{compLabel}</span>}
+      </div>
+      {sub && <p className="text-xs text-zinc-400">{sub}</p>}
+    </div>
+  );
 }
 
 // ── EstadoBadge ───────────────────────────────────────────────────────────────
@@ -266,7 +349,7 @@ export default function DashboardPage() {
 
   if (!data) return null;
 
-  const { stats, puestos, pendientes } = data;
+  const { stats, puestos, pendientes, metricas } = data;
 
   // ── Build pendientes items ─────────────────────────────────────────────────
   const cotizacionItems: PendientesItem[] =
@@ -362,6 +445,95 @@ export default function DashboardPage() {
           label="Entregados hoy"
           accentClass="border-t-zinc-300"
         />
+      </div>
+
+      {/* ── Métricas ── */}
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Esta semana</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <MetricCard
+              icon={<Car className="h-3.5 w-3.5" />}
+              label="Vehículos ingresados"
+              value={metricas.vehiculosEstaSemana}
+              current={metricas.vehiculosEstaSemana}
+              previous={metricas.vehiculosSemanaAnterior}
+              compLabel="vs sem. ant."
+            />
+            <MetricCard
+              icon={<ClipboardCheck className="h-3.5 w-3.5" />}
+              label="OTs entregadas"
+              value={metricas.otsEntregadasEstaSemana}
+              current={metricas.otsEntregadasEstaSemana}
+              previous={metricas.otsEntregadasSemanaAnterior}
+              compLabel="vs sem. ant."
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Este mes</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MetricCard
+              icon={<Car className="h-3.5 w-3.5" />}
+              label="Vehículos ingresados"
+              value={metricas.vehiculosEsteMes}
+              current={metricas.vehiculosEsteMes}
+              previous={metricas.vehiculosMesAnterior}
+              compLabel="vs mes ant."
+            />
+            <MetricCard
+              icon={<ClipboardCheck className="h-3.5 w-3.5" />}
+              label="OTs entregadas"
+              value={metricas.otsEntregadasEsteMes}
+              current={metricas.otsEntregadasEsteMes}
+              previous={metricas.otsEntregadasMesAnterior}
+              compLabel="vs mes ant."
+            />
+            <MetricCard
+              icon={<TrendingUp className="h-3.5 w-3.5" />}
+              label="Ingresos"
+              value={formatCLPShort(metricas.ingresoEsteMes)}
+              current={metricas.ingresoEsteMes}
+              previous={metricas.ingresoMesAnterior}
+              compLabel="vs mes ant."
+            />
+            <MetricCard
+              icon={<TrendingUp className="h-3.5 w-3.5" />}
+              label="Ticket promedio"
+              value={metricas.otsEntregadasEsteMes > 0
+                ? formatCLPShort(Math.round(metricas.ingresoEsteMes / metricas.otsEntregadasEsteMes))
+                : '—'}
+              current={metricas.otsEntregadasEsteMes > 0 ? metricas.ingresoEsteMes / metricas.otsEntregadasEsteMes : 0}
+              previous={metricas.otsEntregadasMesAnterior > 0 ? metricas.ingresoMesAnterior / metricas.otsEntregadasMesAnterior : 0}
+              compLabel="vs mes ant."
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Tiempos promedio (este mes)</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <MetricCard
+              icon={<Timer className="h-3.5 w-3.5" />}
+              label="Días en taller"
+              value={metricas.diasPromedioEnTaller > 0
+                ? `${metricas.diasPromedioEnTaller.toFixed(1)} días`
+                : '—'}
+              sub="Desde recepción hasta entrega"
+              neutral
+            />
+            <MetricCard
+              icon={<Timer className="h-3.5 w-3.5" />}
+              label="Días cotización → entrega"
+              value={metricas.diasPromedioCotAOT > 0
+                ? `${metricas.diasPromedioCotAOT.toFixed(1)} días`
+                : '—'}
+              sub="Desde que se hizo la cotización"
+              neutral
+            />
+          </div>
+        </div>
       </div>
 
       {/* ── Puestos ── */}

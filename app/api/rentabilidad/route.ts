@@ -77,8 +77,14 @@ export async function GET() {
     // Facturas de compra asociadas a OTs
     const facturasRaw = await db
       .select({
+        id: facturas_compra.id,
         ot_id: facturas_compra.ot_id,
+        numero: facturas_compra.numero,
+        proveedor_nombre: facturas_compra.proveedor_nombre,
+        fecha_emision: facturas_compra.fecha_emision,
         total_neto: facturas_compra.total_neto,
+        total: facturas_compra.total,
+        pdf_url: facturas_compra.pdf_url,
         items: facturas_compra.items,
       })
       .from(facturas_compra)

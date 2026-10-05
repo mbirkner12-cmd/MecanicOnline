@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { DollarSign, Wrench, Package, BarChart3, Users, Download, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { DollarSign, Wrench, Package, BarChart3, Users, Download, TrendingUp, TrendingDown, Minus, ChevronRight, ChevronDown, FileText } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTRow {
@@ -37,8 +37,14 @@ interface RepuestoDetalle {
 }
 
 interface FacturaRow {
+  id: number;
   ot_id: number | null;
+  numero: string;
+  proveedor_nombre: string;
+  fecha_emision: string;
   total_neto: number;
+  total: number;
+  pdf_url: string | null;
   items: string;
 }
 
@@ -213,6 +219,7 @@ export default function RentabilidadPage() {
   const [periodo, setPeriodo] = useState<number>(90);
   const [mesFiltro, setMesFiltro] = useState<string>(''); // 'YYYY-MM' o vacío
   const [categorias, setCategorias] = useState<Record<string, string>>({});
+  const [expandedOTs, setExpandedOTs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     Promise.all([
@@ -663,6 +670,7 @@ export default function RentabilidadPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
+                <th className="w-8 px-2 py-2.5" />
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500">OT</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 hidden md:table-cell">Cliente / Vehículo</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-zinc-500 hidden md:table-cell">Mecánico</th>
@@ -676,17 +684,34 @@ export default function RentabilidadPage() {
             <tbody>
               {otsFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-zinc-400 text-sm">
+                  <td colSpan={9} className="px-4 py-10 text-center text-zinc-400 text-sm">
                     No hay órdenes en el período seleccionado.
                   </td>
                 </tr>
               ) : (
-                otsFiltradas.map(ot => {
+                otsFiltradas.flatMap(ot => {
                   const factor = ot.mecanico_id != null ? (data!.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
                   const c = calcOT(ot, data!.valorHora, data!.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
                   const rowMargenColor = c.margen > 30 ? 'text-green-600 bg-green-50' : c.margen > 10 ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50';
-                  return (
+                  const otFacturas = facturasMap[ot.id] ?? [];
+                  const isExpanded = expandedOTs.has(ot.id);
+                  const rows = [
                     <tr key={ot.id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
+                      <td className="px-2 py-2.5 text-center">
+                        {otFacturas.length > 0 ? (
+                          <button
+                            onClick={() => setExpandedOTs(prev => {
+                              const next = new Set(prev);
+                              if (next.has(ot.id)) next.delete(ot.id); else next.add(ot.id);
+                              return next;
+                            })}
+                            className="text-zinc-400 hover:text-zinc-700 transition-colors"
+                            title={isExpanded ? 'Ocultar facturas' : 'Ver facturas'}
+                          >
+                            {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                          </button>
+                        ) : null}
+                      </td>
                       <td className="px-4 py-2.5">
                         <Link href={`/ordenes-trabajo/${ot.id}`} className="font-mono font-semibold text-zinc-900 hover:text-blue-600 hover:underline text-xs">
                           {ot.numero}
@@ -708,15 +733,60 @@ export default function RentabilidadPage() {
                           {c.margen.toFixed(1)}%
                         </span>
                       </td>
-                    </tr>
-                  );
+                    </tr>,
+                  ];
+                  if (isExpanded && otFacturas.length > 0) {
+                    rows.push(
+                      <tr key={`${ot.id}-facturas`} className="bg-zinc-50 border-b border-zinc-100">
+                        <td colSpan={9} className="px-6 py-3">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <FileText className="h-3.5 w-3.5 text-zinc-400" />
+                            <span className="text-xs font-semibold text-zinc-500">Facturas de compra</span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-zinc-400 border-b border-zinc-200">
+                                  <th className="text-left pb-1.5 pr-4 font-medium">N° Factura</th>
+                                  <th className="text-left pb-1.5 pr-4 font-medium">Proveedor</th>
+                                  <th className="text-left pb-1.5 pr-4 font-medium hidden sm:table-cell">Fecha</th>
+                                  <th className="text-right pb-1.5 pr-4 font-medium">Neto</th>
+                                  <th className="text-right pb-1.5 font-medium">Total</th>
+                                  <th className="pb-1.5 pl-3 w-8" />
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {otFacturas.map(f => (
+                                  <tr key={f.id} className="border-b border-zinc-100 last:border-0">
+                                    <td className="py-1.5 pr-4 font-mono text-zinc-700">{f.numero}</td>
+                                    <td className="py-1.5 pr-4 text-zinc-600">{f.proveedor_nombre}</td>
+                                    <td className="py-1.5 pr-4 text-zinc-500 hidden sm:table-cell">{f.fecha_emision ? new Date(f.fecha_emision).toLocaleDateString('es-CL') : '—'}</td>
+                                    <td className="py-1.5 pr-4 text-right text-zinc-700">{formatCLP(f.total_neto)}</td>
+                                    <td className="py-1.5 text-right font-medium text-zinc-800">{formatCLP(f.total)}</td>
+                                    <td className="py-1.5 pl-3 text-center">
+                                      {f.pdf_url ? (
+                                        <a href={f.pdf_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700" title="Ver PDF">
+                                          <FileText className="h-3.5 w-3.5" />
+                                        </a>
+                                      ) : null}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return rows;
                 })
               )}
             </tbody>
             {otsFiltradas.length > 0 && stats && (
               <tfoot>
                 <tr className="border-t-2 border-zinc-200 bg-zinc-50 font-semibold">
-                  <td className="px-4 py-2.5 text-xs text-zinc-500" colSpan={3}>{otsFiltradas.length} OTs</td>
+                  <td className="px-4 py-2.5 text-xs text-zinc-500" colSpan={4}>{otsFiltradas.length} OTs</td>
                   <td className="px-4 py-2.5 text-right text-zinc-800">{formatCLP(stats.totalIngreso)}</td>
                   <td className="px-4 py-2.5 text-right text-zinc-500 hidden lg:table-cell">{formatCLP(stats.totalCostoMO)}</td>
                   <td className="px-4 py-2.5 text-right text-zinc-500 hidden lg:table-cell">{formatCLP(stats.totalCostoReps)}</td>

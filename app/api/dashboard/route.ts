@@ -9,11 +9,23 @@ import {
   clientes,
   mecanicos,
 } from '@/lib/db/schema';
-import { count, eq, ne, isNull, isNotNull, inArray, and, like } from 'drizzle-orm';
+import { count, eq, ne, isNull, isNotNull, inArray, and, like, gte, lt, sql } from 'drizzle-orm';
 
 export async function GET() {
   try {
     const today = new Date().toISOString().slice(0, 10);
+
+    // ── Date ranges for metrics ───────────────────────────────────────────────
+    const now = new Date();
+    const dow = now.getDay();
+    const daysToMonday = dow === 0 ? 6 : dow - 1;
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - daysToMonday);
+    const startOfWeekStr = startOfWeek.toISOString().slice(0, 10);
+    const startOfLastWeekStr = new Date(startOfWeek.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+    const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const mesAnteriorDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const mesAnterior = `${mesAnteriorDate.getFullYear()}-${String(mesAnteriorDate.getMonth() + 1).padStart(2, '0')}`;
 
     // ── Stats (parallel) ──────────────────────────────────────────────────────
     const [
@@ -213,6 +225,59 @@ export async function GET() {
           .limit(5),
       ]);
 
+    // ── Métricas ──────────────────────────────────────────────────────────────
+    const [
+      vehSemana, vehSemanaAnt, vehMes, vehMesAnt,
+      otsSemana, otsSemanaAnt,
+      otsMes, otsMesAnt,
+      tiempoTaller, tiempoCotOT,
+    ] = await Promise.all([
+      db.select({ c: count() }).from(recepciones).where(gte(recepciones.created_at, startOfWeekStr)),
+      db.select({ c: count() }).from(recepciones).where(and(gte(recepciones.created_at, startOfLastWeekStr), lt(recepciones.created_at, startOfWeekStr))),
+      db.select({ c: count() }).from(recepciones).where(like(recepciones.created_at, `${mesActual}%`)),
+      db.select({ c: count() }).from(recepciones).where(like(recepciones.created_at, `${mesAnterior}%`)),
+
+      db.select({ c: count() }).from(ordenes_trabajo).where(and(eq(ordenes_trabajo.estado, 'entregado'), gte(ordenes_trabajo.updated_at, startOfWeekStr))),
+      db.select({ c: count() }).from(ordenes_trabajo).where(and(eq(ordenes_trabajo.estado, 'entregado'), gte(ordenes_trabajo.updated_at, startOfLastWeekStr), lt(ordenes_trabajo.updated_at, startOfWeekStr))),
+
+      db.select({ c: count(), ingreso: sql<number>`COALESCE(SUM(${cotizaciones.total}), 0)` })
+        .from(ordenes_trabajo)
+        .leftJoin(cotizaciones, eq(ordenes_trabajo.cotizacion_id, cotizaciones.id))
+        .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesActual}%`))),
+
+      db.select({ c: count(), ingreso: sql<number>`COALESCE(SUM(${cotizaciones.total}), 0)` })
+        .from(ordenes_trabajo)
+        .leftJoin(cotizaciones, eq(ordenes_trabajo.cotizacion_id, cotizaciones.id))
+        .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesAnterior}%`))),
+
+      // Días desde recepción hasta entrega (OTs con recepcion_id)
+      db.select({ avg: sql<number>`AVG(julianday(${ordenes_trabajo.updated_at}) - julianday(${recepciones.created_at}))` })
+        .from(ordenes_trabajo)
+        .leftJoin(recepciones, eq(ordenes_trabajo.recepcion_id, recepciones.id))
+        .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesActual}%`), isNotNull(ordenes_trabajo.recepcion_id))),
+
+      // Días desde cotización creada hasta OT entregada
+      db.select({ avg: sql<number>`AVG(julianday(${ordenes_trabajo.updated_at}) - julianday(${cotizaciones.created_at}))` })
+        .from(ordenes_trabajo)
+        .leftJoin(cotizaciones, eq(ordenes_trabajo.cotizacion_id, cotizaciones.id))
+        .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesActual}%`))),
+    ]);
+
+    const metricas = {
+      vehiculosEstaSemana: vehSemana[0].c,
+      vehiculosSemanaAnterior: vehSemanaAnt[0].c,
+      vehiculosEsteMes: vehMes[0].c,
+      vehiculosMesAnterior: vehMesAnt[0].c,
+      otsEntregadasEstaSemana: otsSemana[0].c,
+      otsEntregadasSemanaAnterior: otsSemanaAnt[0].c,
+      otsEntregadasEsteMes: otsMes[0].c,
+      otsEntregadasMesAnterior: otsMesAnt[0].c,
+      ingresoEsteMes: Number(otsMes[0].ingreso) || 0,
+      ingresoMesAnterior: Number(otsMesAnt[0].ingreso) || 0,
+      diasPromedioEnTaller: tiempoTaller[0].avg ?? 0,
+      diasPromedioCotAOT: tiempoCotOT[0].avg ?? 0,
+    };
+
     return NextResponse.json({
       stats,
       puestos: puestosData,
@@ -221,6 +286,7 @@ export async function GET() {
         recepcionesSinCotizacion,
         otsSinMecanico,
       },
+      metricas,
     });
   } catch (error) {
     console.error('GET /api/dashboard error:', error);

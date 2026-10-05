@@ -92,8 +92,9 @@ const ELECTRICO_RE = /\balternador|arranque|starter|sensor|cable|fusible|foco|am
 const DIRECCION_RE = /\bdirecci[oó]n|cremallera|terminal\b/i;
 
 function normalizeRepuestoNombre(nombre: string): string {
-  if (ACEITE_RE.test(nombre)) return 'Aceites';
+  // Filtros va antes que Aceites: "Filtro de aceite" es un filtro, no aceite
   if (FILTRO_RE.test(nombre)) return 'Filtros';
+  if (ACEITE_RE.test(nombre)) return 'Aceites';
   if (FRENO_RE.test(nombre)) return 'Frenos';
   if (SUSPENSION_RE.test(nombre)) return 'Suspensión';
   if (BUJIA_RE.test(nombre)) return 'Bujías';
@@ -220,7 +221,6 @@ export default function RentabilidadPage() {
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<number>(90);
   const [mesFiltro, setMesFiltro] = useState<string>(''); // 'YYYY-MM' o vacío
-  const [categorias, setCategorias] = useState<Record<string, string>>({});
   const [expandedOTs, setExpandedOTs] = useState<Set<number>>(new Set());
   const [expandedInsumos, setExpandedInsumos] = useState<Set<string>>(new Set());
 
@@ -231,30 +231,6 @@ export default function RentabilidadPage() {
     ]).then(([d, g]) => {
         setData(d);
         setGastos(g.filter(x => x.activo));
-
-        // Recolectar nombres únicos de inventario + cotizaciones
-        const namesSet = new Set<string>();
-        for (const r of d.repuestosDetalle) {
-          if (r.nombre) namesSet.add(r.nombre);
-        }
-        for (const ot of d.ots) {
-          try {
-            const reps = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ detalle: string }>;
-            for (const r of reps) { if (r.detalle) namesSet.add(r.detalle); }
-          } catch { /* */ }
-        }
-        const uniqueNames = [...namesSet];
-
-        if (uniqueNames.length > 0) {
-          fetch('/api/categorize-repuestos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombres: uniqueNames }),
-          })
-            .then(r => r.json() as Promise<Record<string, string>>)
-            .then(setCategorias)
-            .catch(() => { /* fallback to normalization */ });
-        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -354,7 +330,7 @@ export default function RentabilidadPage() {
         const reps = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ detalle: string; cantidad: number }>;
         for (const r of reps) {
           if (!r.detalle || r.cantidad <= 0) continue;
-          const cat = categorias[r.detalle] ?? normalizeRepuestoNombre(r.detalle);
+          const cat = normalizeRepuestoNombre(r.detalle);
           const unidad = (cat === 'Aceites' || cat === 'Refrigeración') ? 'L' : 'uds.';
           if (!map[cat]) map[cat] = { unidad, totalCantidad: 0, items: [] };
           map[cat].totalCantidad += r.cantidad;
@@ -364,7 +340,7 @@ export default function RentabilidadPage() {
     }
 
     return map;
-  }, [data, otsFiltradas, categorias]);
+  }, [data, otsFiltradas]);
 
   // Cuántos meses cubre el período seleccionado (para prorratear costos fijos)
   const mesesPeriodo = useMemo(() => {

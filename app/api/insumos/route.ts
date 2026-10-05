@@ -5,8 +5,9 @@ import { and, like, gte, lte } from 'drizzle-orm';
 
 // ── Categorías ────────────────────────────────────────────────────────────────
 const CATS: Array<{ cat: string; re: RegExp; unidad: string }> = [
-  { cat: 'Aceites', re: /\baceite|lubricante|5w|10w|0w|15w|atf|dexron\b/i, unidad: 'L' },
+  // Filtros antes que Aceites: "Filtro de aceite" es un filtro, no aceite
   { cat: 'Filtros', re: /\bfiltro|filter\b/i, unidad: 'uds.' },
+  { cat: 'Aceites', re: /\baceite|lubricante|5w|10w|0w|15w|atf|dexron\b/i, unidad: 'L' },
   { cat: 'Frenos', re: /\bpastilla|zapata|disco\s*(freno|brake)|rotor|l[ií]quido\s*freno\b/i, unidad: 'uds.' },
   { cat: 'Suspensión', re: /\bamortiguador|muelle|resorte|bieleta|r[oó]tula|silent\s*block\b/i, unidad: 'uds.' },
   { cat: 'Bujías', re: /\bbuj[íi]a\b/i, unidad: 'uds.' },

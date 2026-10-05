@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { facturas_compra } from '@/lib/db/schema';
-import { like } from 'drizzle-orm';
+import { and, like, gte, lte } from 'drizzle-orm';
 
 // ── Categorías ────────────────────────────────────────────────────────────────
 const CATS: Array<{ cat: string; re: RegExp; unidad: string }> = [
@@ -24,8 +24,6 @@ function categorize(nombre: string): { cat: string; unidad: string } {
   return { cat: 'Otros', unidad: 'uds.' };
 }
 
-// Extrae litros del nombre del item. Si dice "4L" y cantidad=2 → 8L.
-// Si no hay litros en el nombre, asume que cantidad ya está en litros.
 const LITROS_RE = /(\d+(?:[.,]\d+)?)\s*(?:L|lts?|litros?)\b/i;
 const ML_RE = /(\d+(?:[.,]\d+)?)\s*(?:ml|cc)\b/i;
 
@@ -48,13 +46,26 @@ export interface InsumoStats {
 
 export async function GET(req: NextRequest) {
   try {
-    const mes = req.nextUrl.searchParams.get('mes') ||
-      (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; })();
+    const { searchParams } = req.nextUrl;
+    const mes = searchParams.get('mes');
+    const desde = searchParams.get('desde');
+    const hasta = searchParams.get('hasta');
+
+    // Build where clause depending on params
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const conditions: any[] = [];
+    if (mes) {
+      conditions.push(like(facturas_compra.fecha_emision, `${mes}%`));
+    } else {
+      if (desde) conditions.push(gte(facturas_compra.fecha_emision, desde));
+      if (hasta) conditions.push(lte(facturas_compra.fecha_emision, hasta));
+    }
 
     const rows = await db
       .select({ items: facturas_compra.items })
       .from(facturas_compra)
-      .where(like(facturas_compra.fecha_emision, `${mes}%`));
+      .$dynamic()
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const map: Record<string, { cat: string; unidad: string; totalCantidad: number; totalGasto: number; nItems: number }> = {};
 

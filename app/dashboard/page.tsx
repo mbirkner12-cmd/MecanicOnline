@@ -16,9 +16,7 @@ import {
   Car,
   ClipboardCheck,
   Timer,
-  ShoppingCart,
 } from "lucide-react";
-import type { InsumoStats } from "@/app/api/insumos/route";
 import { Button } from "@/components/ui/button";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -95,10 +93,6 @@ function formatCLPShort(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
   return `$${Math.round(n)}`;
-}
-
-function formatCLP(n: number): string {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(Math.round(n));
 }
 
 // ── MetricCard ────────────────────────────────────────────────────────────────
@@ -279,26 +273,19 @@ function PendientesCard({ icon, title, items }: PendientesCardProps) {
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [insumos, setInsumos] = useState<InsumoStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const mesActual = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; })();
-
   const fetchData = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
     setError(null);
     try {
-      const [res, insRes] = await Promise.all([
-        fetch("/api/dashboard"),
-        fetch(`/api/insumos?mes=${mesActual}`),
-      ]);
+      const res = await fetch("/api/dashboard");
       if (!res.ok) throw new Error("Error al cargar datos");
-      const [json, insJson]: [DashboardData, InsumoStats[]] = await Promise.all([res.json(), insRes.json()]);
+      const json: DashboardData = await res.json();
       setData(json);
-      setInsumos(Array.isArray(insJson) ? insJson : []);
       setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -306,7 +293,7 @@ export default function DashboardPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [mesActual]);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -548,53 +535,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Compras del mes */}
-        <div className="space-y-1.5">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Compras del mes (facturas)</h2>
-          <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
-            {insumos.length === 0 ? (
-              <div className="px-4 py-4 flex items-center gap-2 text-sm text-zinc-400">
-                <ShoppingCart className="h-4 w-4" />
-                Sin facturas de compra registradas este mes.
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-4 px-4 py-2 border-b border-zinc-100 bg-zinc-50">
-                  <span className="text-xs font-semibold text-zinc-500">Categoría</span>
-                  <span className="text-xs font-semibold text-zinc-500 text-right">Cantidad</span>
-                  <span className="text-xs font-semibold text-zinc-500 text-right">Gasto</span>
-                  <span className="text-xs font-semibold text-zinc-500 text-right">Precio prom.</span>
-                </div>
-                <div className="divide-y divide-zinc-50">
-                  {insumos.map(ins => (
-                    <div key={ins.cat} className="grid grid-cols-4 px-4 py-2.5 hover:bg-zinc-50/50">
-                      <span className="text-sm font-medium text-zinc-700">{ins.cat}</span>
-                      <span className="text-sm text-zinc-600 text-right tabular-nums">
-                        {ins.unidad === 'L'
-                          ? `${ins.totalCantidad.toFixed(1)} L`
-                          : `${Math.round(ins.totalCantidad)} uds.`}
-                      </span>
-                      <span className="text-sm text-zinc-700 font-medium text-right tabular-nums">
-                        {formatCLPShort(ins.totalGasto)}
-                      </span>
-                      <span className="text-xs text-zinc-400 text-right tabular-nums">
-                        {ins.precioPromedio > 0
-                          ? `${formatCLP(ins.precioPromedio)}/${ins.unidad}`
-                          : '—'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-4 py-2.5 border-t border-zinc-100 bg-zinc-50 flex justify-between">
-                  <span className="text-xs text-zinc-500 font-semibold">Total compras</span>
-                  <span className="text-xs font-bold text-zinc-800">
-                    {formatCLP(insumos.reduce((s, i) => s + i.totalGasto, 0))}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* ── Puestos ── */}

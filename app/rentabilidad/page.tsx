@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { DollarSign, Wrench, Package, BarChart3, Users, Download, TrendingUp, TrendingDown, Minus, ChevronRight, ChevronDown, FileText } from 'lucide-react';
+import { DollarSign, Wrench, Package, BarChart3, Users, Download, TrendingUp, TrendingDown, Minus, ChevronRight, ChevronDown, FileText, ShoppingCart } from 'lucide-react';
+import type { InsumoStats } from '@/app/api/insumos/route';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OTRow {
@@ -215,6 +216,7 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
 export default function RentabilidadPage() {
   const [data, setData] = useState<RentabilidadData | null>(null);
   const [gastos, setGastos] = useState<GastoEstructura[]>([]);
+  const [insumos, setInsumos] = useState<InsumoStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<number>(90);
   const [mesFiltro, setMesFiltro] = useState<string>(''); // 'YYYY-MM' o vacío
@@ -255,6 +257,23 @@ export default function RentabilidadPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Fetch insumos cuando cambia el filtro de período
+  useEffect(() => {
+    let url = '/api/insumos';
+    if (mesFiltro) {
+      url += `?mes=${mesFiltro}`;
+    } else if (periodo > 0) {
+      const desde = new Date();
+      desde.setDate(desde.getDate() - periodo);
+      url += `?desde=${desde.toISOString().slice(0, 10)}`;
+    }
+    // periodo === 0 (Todo): sin filtro de fecha → trae todo
+    fetch(url)
+      .then(r => r.json() as Promise<InsumoStats[]>)
+      .then(d => setInsumos(Array.isArray(d) ? d : []))
+      .catch(() => setInsumos([]));
+  }, [mesFiltro, periodo]);
 
   // Filtrar por período o mes específico
   const otsFiltradas = useMemo(() => {
@@ -659,6 +678,56 @@ export default function RentabilidadPage() {
           </div>
         );
       })()}
+
+      {/* ── Compras del período ──────────────────────────────────────────── */}
+      {insumos.length > 0 && (
+        <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4 text-zinc-400" />
+            <h2 className="text-sm font-semibold text-zinc-700">Compras del período (facturas)</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-zinc-100 bg-zinc-50">
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-zinc-500">Categoría</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Cantidad</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Gasto total</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-zinc-500">Precio promedio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {insumos.map(ins => (
+                  <tr key={ins.cat} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
+                    <td className="px-5 py-2.5 font-medium text-zinc-700">{ins.cat}</td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-zinc-600">
+                      {ins.unidad === 'L'
+                        ? `${ins.totalCantidad.toFixed(1)} L`
+                        : `${Math.round(ins.totalCantidad)} uds.`}
+                    </td>
+                    <td className="px-5 py-2.5 text-right tabular-nums font-medium text-zinc-800">
+                      {formatCLP(ins.totalGasto)}
+                    </td>
+                    <td className="px-5 py-2.5 text-right tabular-nums text-zinc-500">
+                      {ins.precioPromedio > 0 ? `${formatCLP(ins.precioPromedio)} / ${ins.unidad}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-zinc-200 bg-zinc-50 font-semibold">
+                  <td className="px-5 py-2.5 text-xs text-zinc-500">Total</td>
+                  <td />
+                  <td className="px-5 py-2.5 text-right text-zinc-800">
+                    {formatCLP(insumos.reduce((s, i) => s + i.totalGasto, 0))}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Tabla por OT ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">

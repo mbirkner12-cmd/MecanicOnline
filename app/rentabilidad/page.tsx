@@ -343,64 +343,6 @@ export default function RentabilidadPage() {
     return Object.values(map).sort((a, b) => b.totalMO - a.totalMO);
   }, [data, otsFiltradas, facturasMap]);
 
-  // Repuestos agrupados por categoría — inventario + cotización, con "Otros" para los poco frecuentes
-  const topRepuestos = useMemo(() => {
-    if (!data) return [];
-    const map: Record<string, { display: string; total: number; nOTs: Set<number> }> = {};
-
-    // Inventario (ot_repuestos)
-    const otIds = new Set(otsFiltradas.map(o => o.id));
-    for (const r of data.repuestosDetalle) {
-      if (!otIds.has(r.ot_id)) continue;
-      const display = categorias[r.nombre] ?? normalizeRepuestoNombre(r.nombre);
-      const key = display.toLowerCase();
-      if (!map[key]) map[key] = { display, total: 0, nOTs: new Set() };
-      map[key].total += r.cantidad * r.precio_costo_snapshot;
-      map[key].nOTs.add(r.ot_id);
-    }
-
-    // Cotización (cot_repuestos + costo_repuestos_cot)
-    for (const ot of otsFiltradas) {
-      try {
-        const repsCot = JSON.parse(ot.cot_repuestos ?? '[]') as Array<{ detalle: string; cantidad: number }>;
-        const costosCot = (JSON.parse(ot.costo_repuestos_cot ?? 'null') as (number | null)[] | null) ?? [];
-        repsCot.forEach((r, i) => {
-          const costo = costosCot[i];
-          if (!costo || costo <= 0 || !r.detalle) return;
-          const display = categorias[r.detalle] ?? normalizeRepuestoNombre(r.detalle);
-          const key = display.toLowerCase();
-          if (!map[key]) map[key] = { display, total: 0, nOTs: new Set() };
-          map[key].total += r.cantidad * costo;
-          map[key].nOTs.add(ot.id);
-        });
-      } catch { /* */ }
-    }
-
-    const sorted = Object.values(map).sort((a, b) => b.total - a.total);
-    const totalOTs = otsFiltradas.length;
-
-    // Grupos con solo 1 OT y menos de 3% del total de repuestos → "Otros"
-    const totalReps = sorted.reduce((s, v) => s + v.total, 0);
-    const threshold = totalReps * 0.03;
-
-    const principales: typeof sorted = [];
-    let otrosTotal = 0;
-    const otrosOTs = new Set<number>();
-
-    for (const item of sorted) {
-      if (item.nOTs.size <= 1 && item.total < threshold && totalOTs > 3) {
-        otrosTotal += item.total;
-        item.nOTs.forEach(id => otrosOTs.add(id));
-      } else {
-        principales.push(item);
-      }
-    }
-
-    const result = principales.map(v => ({ nombre: v.display, total: v.total, nOTs: v.nOTs.size }));
-    if (otrosTotal > 0) result.push({ nombre: 'Otros', total: otrosTotal, nOTs: otrosOTs.size });
-    return result;
-  }, [data, otsFiltradas, categorias]);
-
   // Consumo de insumos por categoría (desde ot_repuestos + cot_repuestos)
   const consumoPorCategoria = useMemo(() => {
     if (!data) return {} as Record<string, { unidad: string; totalCantidad: number }>;
@@ -570,32 +512,31 @@ export default function RentabilidadPage() {
             )}
           </div>
 
-          {/* Top repuestos */}
+          {/* Costos detalle (desde facturas) */}
           <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
             <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
               <Package className="h-4 w-4 text-zinc-400" />
               Costos detalle
             </h2>
-            {topRepuestos.length === 0 && (!stats || stats.totalCostoMO === 0) ? (
-              <p className="text-xs text-zinc-400 italic">Sin repuestos de inventario registrados.</p>
+            {insumos.length === 0 && (!stats || stats.totalCostoMO === 0) ? (
+              <p className="text-xs text-zinc-400 italic">Sin facturas de compra en el período.</p>
             ) : (
               <div className="space-y-3">
-                {stats && stats.totalCostoMO > 0 && (() => {
-                  const maxVal = Math.max(topRepuestos[0]?.total ?? 0, stats.totalCostoMO);
+                {(() => {
+                  const maxVal = Math.max(insumos[0]?.totalGasto ?? 0, stats?.totalCostoMO ?? 0);
                   return (
                     <>
-                      <Bar
-                        label="Mano de obra"
-                        value={stats.totalCostoMO}
-                        max={maxVal}
-                        color="bg-amber-400"
-                      />
-                      {topRepuestos.length > 0 && <div className="border-t border-zinc-100" />}
-                      {topRepuestos.map(r => (
+                      {stats && stats.totalCostoMO > 0 && (
+                        <Bar label="Mano de obra" value={stats.totalCostoMO} max={maxVal} color="bg-amber-400" />
+                      )}
+                      {insumos.length > 0 && stats && stats.totalCostoMO > 0 && (
+                        <div className="border-t border-zinc-100" />
+                      )}
+                      {insumos.map(ins => (
                         <Bar
-                          key={r.nombre}
-                          label={`${r.nombre} (${r.nOTs} OT${r.nOTs !== 1 ? 's' : ''})`}
-                          value={r.total}
+                          key={ins.cat}
+                          label={ins.cat}
+                          value={ins.totalGasto}
                           max={maxVal}
                           color="bg-orange-400"
                         />
@@ -603,15 +544,6 @@ export default function RentabilidadPage() {
                     </>
                   );
                 })()}
-                {(!stats || stats.totalCostoMO === 0) && topRepuestos.map(r => (
-                  <Bar
-                    key={r.nombre}
-                    label={`${r.nombre} (${r.nOTs} OT${r.nOTs !== 1 ? 's' : ''})`}
-                    value={r.total}
-                    max={topRepuestos[0].total}
-                    color="bg-orange-400"
-                  />
-                ))}
               </div>
             )}
           </div>

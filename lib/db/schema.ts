@@ -251,6 +251,7 @@ export const gastos_estructura = sqliteTable('gastos_estructura', {
   monto_mensual: real('monto_mensual').notNull().default(0),
   tipo: text('tipo', { enum: ['fijo', 'gav', 'puntual'] }).notNull().default('fijo'),
   mes: text('mes'), // 'YYYY-MM' — solo para tipo 'puntual'
+  factura_url: text('factura_url'),
   activo: integer('activo', { mode: 'boolean' }).default(true).notNull(),
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });

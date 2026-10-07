@@ -11,7 +11,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const numId = parseInt(id);
     if (isNaN(numId)) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
 
-    const body = await req.json() as { nombre?: string; monto_mensual?: number; tipo?: 'fijo' | 'gav' | 'puntual'; mes?: string | null; activo?: boolean };
+    const body = await req.json() as { nombre?: string; monto_mensual?: number; tipo?: 'fijo' | 'gav' | 'puntual'; mes?: string | null; activo?: boolean; factura_url?: string | null };
     const updates: Record<string, unknown> = {};
     if (body.nombre !== undefined) updates.nombre = body.nombre.trim();
     if (body.monto_mensual !== undefined) updates.monto_mensual = body.monto_mensual;
@@ -21,6 +21,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     }
     if (body.mes !== undefined && body.tipo === undefined) updates.mes = body.mes;
     if (body.activo !== undefined) updates.activo = body.activo;
+    if (body.factura_url !== undefined) updates.factura_url = body.factura_url;
 
     await db.update(gastos_estructura).set(updates).where(eq(gastos_estructura.id, numId));
     const [row] = await db.select().from(gastos_estructura).where(eq(gastos_estructura.id, numId)).limit(1);

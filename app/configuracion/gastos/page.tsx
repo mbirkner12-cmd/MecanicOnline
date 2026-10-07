@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Upload, X, Loader2, FileSpreadsheet, ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, X, Loader2, FileSpreadsheet, ImageIcon, Sparkles, ExternalLink, FileText } from 'lucide-react';
 
 type GastoEstructura = {
   id: number;
@@ -15,6 +15,7 @@ type GastoEstructura = {
   monto_mensual: number;
   tipo: 'fijo' | 'gav' | 'puntual';
   mes: string | null;
+  factura_url: string | null;
   activo: boolean;
   created_at: string;
 };
@@ -72,6 +73,12 @@ export default function GastosEstructuraPage() {
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Factura en formulario agregar/editar
+  const [facturaUrl, setFacturaUrl] = useState<string | null>(null);
+  const [uploadingFactura, setUploadingFactura] = useState(false);
+  const [leidoIA, setLeidoIA] = useState(false);
+  const facturaInputRef = useRef<HTMLInputElement>(null);
+
   // Dialog importar
   const [importOpen, setImportOpen] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
@@ -92,12 +99,13 @@ export default function GastosEstructuraPage() {
   useEffect(() => { fetchGastos(); }, []);
 
   function openCreate() {
-    setEditingId(null); setForm(emptyForm); setErrors({}); setApiError(null); setDialogOpen(true);
+    setEditingId(null); setForm(emptyForm); setErrors({}); setApiError(null);
+    setFacturaUrl(null); setLeidoIA(false); setDialogOpen(true);
   }
   function openEdit(g: GastoEstructura) {
     setEditingId(g.id);
     setForm({ nombre: g.nombre, monto_mensual: String(g.monto_mensual), tipo: g.tipo, mes: g.mes ?? '' });
-    setErrors({}); setApiError(null); setDialogOpen(true);
+    setErrors({}); setApiError(null); setFacturaUrl(g.factura_url ?? null); setLeidoIA(false); setDialogOpen(true);
   }
   function validate() {
     const e: Partial<FormData> = {};
@@ -119,6 +127,7 @@ export default function GastosEstructuraPage() {
           ...form,
           monto_mensual: parseFloat(form.monto_mensual),
           mes: form.tipo === 'puntual' ? form.mes : null,
+          factura_url: facturaUrl ?? null,
         }),
       });
       const data = await res.json();
@@ -130,6 +139,33 @@ export default function GastosEstructuraPage() {
     if (!confirm(`¿Eliminar "${nombre}"?`)) return;
     await fetch(`/api/gastos-estructura/${id}`, { method: 'DELETE' });
     await fetchGastos();
+  }
+
+  // ── Factura en formulario ──────────────────────────────────────────────────
+  async function handleFacturaFile(file: File) {
+    setUploadingFactura(true);
+    setLeidoIA(false);
+    setApiError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/gastos-estructura/parse', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Error al analizar la factura');
+      const data = await res.json() as { factura_url: string; nombre: string | null; monto: number };
+      setFacturaUrl(data.factura_url);
+      if (data.nombre) {
+        setForm(prev => ({ ...prev, nombre: prev.nombre.trim() ? prev.nombre : data.nombre! }));
+        setLeidoIA(true);
+      }
+      if (data.monto > 0) {
+        setForm(prev => ({ ...prev, monto_mensual: !prev.monto_mensual || prev.monto_mensual === '0' ? String(data.monto) : prev.monto_mensual }));
+        setLeidoIA(true);
+      }
+    } catch {
+      setApiError('No se pudo leer la factura. Completá los campos manualmente.');
+    } finally {
+      setUploadingFactura(false);
+    }
   }
 
   // ── Importación ────────────────────────────────────────────────────────────
@@ -289,6 +325,11 @@ export default function GastosEstructuraPage() {
                         </td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            {g.factura_url && (
+                              <a href={g.factura_url} target="_blank" rel="noopener noreferrer" title="Ver factura" className="flex items-center justify-center h-7 w-7 rounded-md text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                                <FileText className="h-3.5 w-3.5" />
+                              </a>
+                            )}
                             <Button variant="ghost" size="sm" onClick={() => openEdit(g)} className="h-7 w-7 p-0">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -359,6 +400,38 @@ export default function GastosEstructuraPage() {
                 {(errors as Record<string, string>).mes && <p className="text-xs text-red-500">{(errors as Record<string, string>).mes}</p>}
               </div>
             )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Factura / boleta <span className="text-zinc-400 font-normal">(opcional)</span></Label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => facturaInputRef.current?.click()}
+                  disabled={uploadingFactura}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-zinc-200 rounded-lg text-xs text-zinc-600 bg-white hover:bg-zinc-50 disabled:opacity-50 transition-colors"
+                >
+                  {uploadingFactura ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                  {uploadingFactura ? 'Leyendo con IA...' : facturaUrl ? 'Cambiar factura' : 'Subir factura'}
+                </button>
+                {facturaUrl && !uploadingFactura && (
+                  <a href={facturaUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" /> Ver
+                  </a>
+                )}
+                {leidoIA && !uploadingFactura && (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-100 font-medium">
+                    <Sparkles className="h-3 w-3" /> Leído con IA
+                  </span>
+                )}
+                <input
+                  ref={facturaInputRef}
+                  type="file"
+                  accept=".pdf,image/*"
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFacturaFile(f); e.target.value = ''; }}
+                />
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancelar</Button>

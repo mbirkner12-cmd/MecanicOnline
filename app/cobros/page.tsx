@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { DollarSign, CheckCircle2, Clock, Filter, FileText, AlertTriangle, Eye, X, Package, Wrench, Loader2, ClipboardList } from 'lucide-react';
+import { DollarSign, CheckCircle2, Clock, Filter, FileText, AlertTriangle, Eye, X, Package, Wrench, Loader2, ClipboardList, Search } from 'lucide-react';
 import { EstadoBadgeOT, type EstadoOT } from '@/components/ordenes-trabajo/EstadoBadgeOT';
 
 interface CobroRow {
@@ -289,6 +289,8 @@ export default function CobrosPage() {
   const [cobros, setCobros] = useState<CobroRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'todos' | 'pendiente' | 'pagado'>('todos');
+  const [filtroCliente, setFiltroCliente] = useState('');
+  const [filtroDoc, setFiltroDoc] = useState<'todos' | 'pendiente' | 'creado'>('todos');
   const [orden, setOrden] = useState<'numero' | 'fecha'>('numero');
   const [actualizando, setActualizando] = useState<number | null>(null);
   const [detalleId, setDetalleId] = useState<number | null>(null);
@@ -323,6 +325,15 @@ export default function CobrosPage() {
     .filter(c => {
       if (filtro === 'pendiente') return !c.pagado;
       if (filtro === 'pagado') return c.pagado;
+      return true;
+    })
+    .filter(c => {
+      if (!filtroCliente.trim()) return true;
+      return c.cliente?.nombre.toLowerCase().includes(filtroCliente.toLowerCase().trim());
+    })
+    .filter(c => {
+      if (filtroDoc === 'pendiente') return !c.boleta_creada;
+      if (filtroDoc === 'creado') return c.boleta_creada;
       return true;
     })
     .sort((a, b) => {
@@ -370,32 +381,67 @@ export default function CobrosPage() {
         </div>
 
         {/* Filtros y orden */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-zinc-400" />
-            {(['todos', 'pendiente', 'pagado'] as const).map(f => (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-zinc-400" />
+              {(['todos', 'pendiente', 'pagado'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFiltro(f)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filtro === f ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+                >
+                  {f === 'todos' ? 'Todos' : f === 'pendiente' ? 'Pendientes' : 'Pagados'}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-1 ml-auto">
               <button
-                key={f}
-                onClick={() => setFiltro(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filtro === f ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+                onClick={() => setOrden('numero')}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${orden === 'numero' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
               >
-                {f === 'todos' ? 'Todos' : f === 'pendiente' ? 'Pendientes' : 'Pagados'}
+                N° OT
               </button>
-            ))}
+              <button
+                onClick={() => setOrden('fecha')}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${orden === 'fecha' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+              >
+                Fecha
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-1 ml-auto">
-            <button
-              onClick={() => setOrden('numero')}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${orden === 'numero' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
-            >
-              N° OT
-            </button>
-            <button
-              onClick={() => setOrden('fecha')}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${orden === 'fecha' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
-            >
-              Fecha
-            </button>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Búsqueda por cliente */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Buscar cliente..."
+                value={filtroCliente}
+                onChange={e => setFiltroCliente(e.target.value)}
+                className="pl-8 pr-7 py-1.5 rounded-lg border border-zinc-200 text-xs text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 w-44"
+              />
+              {filtroCliente && (
+                <button onClick={() => setFiltroCliente('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Filtro por estado de documento */}
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5 text-zinc-400" />
+              {(['todos', 'pendiente', 'creado'] as const).map(d => (
+                <button
+                  key={d}
+                  onClick={() => setFiltroDoc(d)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filtroDoc === d ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+                >
+                  {d === 'todos' ? 'Todos' : d === 'pendiente' ? 'Doc. pendiente' : 'Doc. creado'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -433,7 +479,7 @@ export default function CobrosPage() {
                 </tr>
               ) : (
                 filtrados.map(c => {
-                  const necesitaBoleta = c.metodo_pago === 'transferencia' && c.tipo_documento === 'boleta' && !c.boleta_creada;
+                  const necesitaDocumento = !c.boleta_creada;
                   return (
                     <tr key={c.id} className={`border-b border-zinc-100 last:border-0 transition-colors ${c.pagado ? 'bg-green-50/30' : ''}`}>
                       <td className="px-4 py-3">
@@ -484,23 +530,21 @@ export default function CobrosPage() {
                               </button>
                             ))}
                           </div>
-                          {c.metodo_pago === 'transferencia' && c.tipo_documento === 'boleta' && (
-                            <button
-                              disabled={actualizando === c.id}
-                              onClick={() => actualizarPago(c.id, { boleta_creada: !c.boleta_creada })}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
-                                c.boleta_creada
-                                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                  : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                              }`}
-                              title={c.boleta_creada ? 'Marcar boleta como pendiente' : 'Marcar boleta como creada'}
-                            >
-                              {c.boleta_creada
-                                ? <><FileText className="h-3.5 w-3.5" /> Creada</>
-                                : <><AlertTriangle className="h-3.5 w-3.5" /> Pendiente</>
-                              }
-                            </button>
-                          )}
+                          <button
+                            disabled={actualizando === c.id}
+                            onClick={() => actualizarPago(c.id, { boleta_creada: !c.boleta_creada })}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+                              c.boleta_creada
+                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                            }`}
+                            title={c.boleta_creada ? 'Marcar documento como pendiente' : 'Marcar documento como creado'}
+                          >
+                            {c.boleta_creada
+                              ? <><FileText className="h-3.5 w-3.5" /> Creada</>
+                              : <><AlertTriangle className="h-3.5 w-3.5" /> Pendiente</>
+                            }
+                          </button>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -520,7 +564,7 @@ export default function CobrosPage() {
                               : <><DollarSign className="h-3.5 w-3.5" /> Pendiente</>
                             }
                           </button>
-                          {necesitaBoleta && (
+                          {necesitaDocumento && (
                             <button
                               disabled={actualizando === c.id}
                               onClick={() => actualizarPago(c.id, { boleta_creada: true })}

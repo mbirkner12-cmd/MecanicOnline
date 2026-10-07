@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, Camera, Loader2, Receipt, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Camera, Loader2, Receipt, ExternalLink, AlertTriangle, Sparkles } from 'lucide-react';
 
 interface GastoRow {
   id: number;
@@ -36,6 +36,7 @@ export function GastosOT({
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [leidoIA, setLeidoIA] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -51,15 +52,25 @@ export function GastosOT({
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingFoto(true);
+    setLeidoIA(false);
+    setError('');
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error('Error al subir foto');
-      const { url } = await res.json() as { url: string };
-      setFotoUrl(url);
+      const res = await fetch('/api/ot-gastos/parse', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Error al analizar la boleta');
+      const data = await res.json() as { foto_url: string; descripcion: string | null; monto: number };
+      setFotoUrl(data.foto_url);
+      if (data.descripcion) {
+        setDesc(prev => prev.trim() ? prev : data.descripcion!);
+        setLeidoIA(true);
+      }
+      if (data.monto > 0) {
+        setMonto(prev => prev.trim() && prev !== '0' ? prev : String(data.monto));
+        setLeidoIA(true);
+      }
     } catch {
-      setError('Error al subir la foto de la boleta');
+      setError('Error al analizar la boleta. Completá los campos manualmente.');
     } finally {
       setUploadingFoto(false);
     }
@@ -81,7 +92,7 @@ export function GastosOT({
         }),
       });
       if (!res.ok) throw new Error();
-      setDesc(''); setMonto(''); setFotoUrl(null);
+      setDesc(''); setMonto(''); setFotoUrl(null); setLeidoIA(false);
       if (fileRef.current) fileRef.current.value = '';
       await loadGastos();
     } catch {
@@ -138,7 +149,7 @@ export function GastosOT({
             </div>
             <div>
               <label className="text-xs text-zinc-500 mb-1 block">Foto de boleta</label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
@@ -149,12 +160,17 @@ export function GastosOT({
                     ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     : <Camera className="h-3.5 w-3.5" />
                   }
-                  {fotoUrl ? 'Cambiar foto' : 'Subir foto'}
+                  {uploadingFoto ? 'Leyendo con IA...' : fotoUrl ? 'Cambiar foto' : 'Subir foto'}
                 </button>
-                {fotoUrl && (
+                {fotoUrl && !uploadingFoto && (
                   <a href={fotoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
                     <ExternalLink className="h-3 w-3" /> Ver
                   </a>
+                )}
+                {leidoIA && !uploadingFoto && (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 border border-violet-100 font-medium">
+                    <Sparkles className="h-3 w-3" /> Leído con IA
+                  </span>
                 )}
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFoto} />
               </div>

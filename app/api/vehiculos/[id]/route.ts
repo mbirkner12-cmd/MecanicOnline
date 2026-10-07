@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { vehiculos, clientes, alertas_vehiculo, recepciones } from '@/lib/db/schema';
+import { vehiculos, clientes, alertas_vehiculo, recepciones, ordenes_trabajo } from '@/lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 export async function GET(
@@ -61,8 +61,11 @@ export async function GET(
         estado: recepciones.estado,
         motivo_ingreso: recepciones.motivo_ingreso,
         diagnostico_mecanico: recepciones.diagnostico_mecanico,
+        ot_id: ordenes_trabajo.id,
+        ot_numero: ordenes_trabajo.numero,
       })
       .from(recepciones)
+      .leftJoin(ordenes_trabajo, eq(ordenes_trabajo.recepcion_id, recepciones.id))
       .where(eq(recepciones.vehiculo_id, numId))
       .orderBy(desc(recepciones.fecha_hora_ingreso))
       .limit(20);

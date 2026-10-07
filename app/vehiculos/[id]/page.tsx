@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Pencil, Trash2, Bell, BellOff } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Plus, Pencil, Trash2, Bell, BellOff, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,6 +47,8 @@ interface Visita {
   estado: string;
   motivo_ingreso: string | null;
   diagnostico_mecanico: string | null;
+  ot_id: number | null;
+  ot_numero: string | null;
 }
 
 interface VehiculoDetalle {
@@ -437,6 +440,7 @@ export default function VehiculoDetallePage() {
                 <th className="text-left px-4 py-2.5 font-medium text-zinc-500">Kilometraje</th>
                 <th className="text-left px-4 py-2.5 font-medium text-zinc-500">Motivo</th>
                 <th className="text-left px-4 py-2.5 font-medium text-zinc-500">Estado</th>
+                <th className="text-left px-4 py-2.5 font-medium text-zinc-500">OT</th>
               </tr>
             </thead>
             <tbody>
@@ -447,6 +451,19 @@ export default function VehiculoDetallePage() {
                   <td className="px-4 py-3 text-zinc-500 max-w-xs truncate">{v.motivo_ingreso ?? "—"}</td>
                   <td className="px-4 py-3">
                     <EstadoRecepcionBadge estado={v.estado} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {v.ot_id ? (
+                      <Link
+                        href={`/ordenes-trabajo/${v.ot_id}`}
+                        className="inline-flex items-center gap-1 text-xs font-mono font-semibold text-blue-600 hover:underline"
+                      >
+                        {v.ot_numero}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-zinc-400">—</span>
+                    )}
                   </td>
                 </tr>
               ))}

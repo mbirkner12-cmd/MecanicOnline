@@ -34,6 +34,8 @@ interface Metricas {
   ingresoMesAnterior: number;
   diasPromedioEnTaller: number;
   diasPromedioCotAOT: number;
+  costoPromedioPorOT: number;
+  costoPromedioPorOTMesAnterior: number;
 }
 
 interface DashboardData {
@@ -473,7 +475,7 @@ export default function DashboardPage() {
 
         <div className="space-y-1.5">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Este mes</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <MetricCard
               icon={<Car className="h-3.5 w-3.5" />}
               label="Vehículos ingresados"
@@ -500,13 +502,25 @@ export default function DashboardPage() {
             />
             <MetricCard
               icon={<TrendingUp className="h-3.5 w-3.5" />}
-              label="Ticket promedio"
+              label="Ingreso promedio / OT"
               value={metricas.otsEntregadasEsteMes > 0
                 ? formatCLPShort(Math.round(metricas.ingresoEsteMes / metricas.otsEntregadasEsteMes))
                 : '—'}
               current={metricas.otsEntregadasEsteMes > 0 ? metricas.ingresoEsteMes / metricas.otsEntregadasEsteMes : 0}
               previous={metricas.otsEntregadasMesAnterior > 0 ? metricas.ingresoMesAnterior / metricas.otsEntregadasMesAnterior : 0}
               compLabel="vs mes ant."
+            />
+            <MetricCard
+              icon={<TrendingDown className="h-3.5 w-3.5" />}
+              label="Costo promedio / OT"
+              value={metricas.costoPromedioPorOT > 0
+                ? formatCLPShort(Math.round(metricas.costoPromedioPorOT))
+                : '—'}
+              current={metricas.costoPromedioPorOT}
+              previous={metricas.costoPromedioPorOTMesAnterior}
+              compLabel="vs mes ant."
+              neutral
+              sub="Repuestos + mano de obra"
             />
           </div>
         </div>

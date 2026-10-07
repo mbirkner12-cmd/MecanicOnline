@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export type EstadoCotizacion = "pendiente" | "aceptada" | "rechazada";
+export type EstadoCotizacion = "pendiente" | "aceptada" | "rechazada" | "vencida";
 
 const ESTADO_CONFIG: Record<EstadoCotizacion, { label: string; className: string }> = {
   pendiente: {
@@ -15,6 +15,10 @@ const ESTADO_CONFIG: Record<EstadoCotizacion, { label: string; className: string
   rechazada: {
     label: "Rechazada",
     className: "bg-red-100 text-red-700 border-red-200",
+  },
+  vencida: {
+    label: "Vencida",
+    className: "bg-zinc-100 text-zinc-500 border-zinc-300",
   },
 };
 

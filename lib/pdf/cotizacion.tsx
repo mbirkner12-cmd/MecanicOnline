@@ -271,6 +271,16 @@ export function CotizacionDocument({ data }: CotizacionDocumentProps) {
             <Text style={styles.headerNumero}>{data.numero}</Text>
             {/* @ts-ignore */}
             <Text style={styles.headerFecha}>Fecha: {formatFechaPDF(data.created_at)}</Text>
+            {/* @ts-ignore */}
+            <Text style={styles.headerFecha}>
+              {(() => {
+                try {
+                  const d = new Date(data.created_at);
+                  d.setDate(d.getDate() + 15);
+                  return `Válida hasta: ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+                } catch { return 'Válida por 15 días'; }
+              })()}
+            </Text>
           </View>
         </View>
 
@@ -454,7 +464,7 @@ export function CotizacionDocument({ data }: CotizacionDocumentProps) {
         {/* @ts-ignore */}
         <View style={styles.footer} fixed>
           {/* @ts-ignore */}
-          <Text style={styles.footerText}>Cotización válida por 30 días</Text>
+          <Text style={styles.footerText}>Cotización válida por 15 días desde su emisión</Text>
           {/* @ts-ignore */}
           <Text style={styles.footerText}>{data.numero} — MecanicOnline</Text>
         </View>

@@ -2,16 +2,51 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import {
   cotizaciones,
+  cotizacion_repuestos,
   vehiculos,
   clientes,
   recepciones,
   ordenes_trabajo,
 } from '@/lib/db/schema';
-import { eq, desc, max, sql } from 'drizzle-orm';
+import { eq, desc, max, sql, and, inArray, lt } from 'drizzle-orm';
 
 // ── GET /api/cotizaciones ────────────────────────────────────────────────────
 export async function GET() {
   try {
+    // Auto-expire cotizaciones pendientes after 15 days (lazy expiry)
+    const expiredRows = await db
+      .select({ id: cotizaciones.id, recepcion_id: cotizaciones.recepcion_id })
+      .from(cotizaciones)
+      .where(
+        and(
+          eq(cotizaciones.estado, 'pendiente'),
+          lt(cotizaciones.created_at, sql`datetime('now', '-15 days')`)
+        )
+      );
+
+    if (expiredRows.length > 0) {
+      const expiredIds = expiredRows.map(r => r.id);
+      await db.update(cotizaciones)
+        .set({ estado: 'vencida', updated_at: sql`(datetime('now'))` })
+        .where(inArray(cotizaciones.id, expiredIds));
+
+      await db.delete(cotizacion_repuestos)
+        .where(inArray(cotizacion_repuestos.cotizacion_id, expiredIds));
+
+      for (const row of expiredRows) {
+        if (row.recepcion_id != null) {
+          await db.update(recepciones)
+            .set({ estado: 'cotizacion_rechazada', updated_at: sql`(datetime('now'))` })
+            .where(
+              and(
+                eq(recepciones.id, row.recepcion_id),
+                eq(recepciones.estado, 'cotizacion_pendiente')
+              )
+            );
+        }
+      }
+    }
+
     const result = await db
       .select({
         id: cotizaciones.id,

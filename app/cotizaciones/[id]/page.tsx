@@ -121,6 +121,17 @@ function formatFecha(iso: string): string {
   }
 }
 
+function getVencimiento(createdAt: string): { fecha: string; vencida: boolean } {
+  try {
+    const d = new Date(createdAt);
+    d.setDate(d.getDate() + 15);
+    const fecha = d.toLocaleDateString("es-CL", { year: "numeric", month: "2-digit", day: "2-digit" });
+    return { fecha, vencida: new Date() > d };
+  } catch {
+    return { fecha: "—", vencida: false };
+  }
+}
+
 function parseRepuestos(raw: string | null | undefined): RepuestoItem[] {
   try {
     const parsed = JSON.parse(raw ?? '[]');
@@ -378,6 +389,16 @@ export default function CotizacionDetallePage() {
                 <EstadoBadgeCot estado={cotizacion.estado} />
               </div>
               <p className="text-zinc-500 text-sm mt-0.5">Creada: {formatFecha(cotizacion.created_at)}</p>
+              {cotizacion.estado === "pendiente" && (
+                <p className="text-zinc-400 text-xs mt-0.5">
+                  Válida por 15 días · Vence el {getVencimiento(cotizacion.created_at).fecha}
+                </p>
+              )}
+              {cotizacion.estado === "vencida" && (
+                <p className="text-red-500 text-xs mt-0.5">
+                  Venció el {getVencimiento(cotizacion.created_at).fecha}
+                </p>
+              )}
             </div>
           </div>
 
@@ -422,10 +443,12 @@ export default function CotizacionDetallePage() {
                 PDF
               </Button>
             </a>
-            <Button onClick={() => setEditOpen(true)} size="sm" className="flex items-center gap-1.5">
-              <Pencil className="size-4" />
-              Editar
-            </Button>
+            {cotizacion.estado !== "vencida" && cotizacion.estado !== "rechazada" && (
+              <Button onClick={() => setEditOpen(true)} size="sm" className="flex items-center gap-1.5">
+                <Pencil className="size-4" />
+                Editar
+              </Button>
+            )}
           </div>
         </div>
 
@@ -591,7 +614,7 @@ export default function CotizacionDetallePage() {
         <RepuestosCard title="Repuestos" items={repuestos} subtotalLabel="Subtotal repuestos" />
 
         {/* Repuestos del inventario */}
-        {cotizacion.estado !== 'rechazada' && (
+        {cotizacion.estado !== 'rechazada' && cotizacion.estado !== 'vencida' && (
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Repuestos del inventario</CardTitle>

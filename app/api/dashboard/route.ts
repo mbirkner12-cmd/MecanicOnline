@@ -8,6 +8,8 @@ import {
   vehiculos,
   clientes,
   mecanicos,
+  ot_repuestos,
+  configuracion,
 } from '@/lib/db/schema';
 import { count, eq, ne, isNull, isNotNull, inArray, and, like, gte, lt, sql } from 'drizzle-orm';
 
@@ -171,9 +173,9 @@ export async function GET() {
       };
     });
 
-    // ── Pendientes ────────────────────────────────────────────────────────────
-    const [cotizacionesSinRespuesta, recepcionesSinCotizacion, otsSinMecanico] =
-      await Promise.all([
+    // ── Pendientes + valorHora ────────────────────────────────────────────────
+    const [[cotizacionesSinRespuesta, recepcionesSinCotizacion, otsSinMecanico], cfgRows] =
+      await Promise.all([Promise.all([
         db
           .select({
             id: cotizaciones.id,
@@ -223,7 +225,9 @@ export async function GET() {
           )
           .orderBy(ordenes_trabajo.created_at)
           .limit(5),
-      ]);
+      ]), db.select().from(configuracion)]);
+
+    const valorHora = parseInt(cfgRows.find(c => c.clave === 'valor_hora')?.valor ?? '0') || 0;
 
     // ── Métricas ──────────────────────────────────────────────────────────────
     const [
@@ -231,6 +235,8 @@ export async function GET() {
       otsSemana, otsSemanaAnt,
       otsMes, otsMesAnt,
       tiempoTaller, tiempoCotOT,
+      costoRepMes, costoRepMesAnt,
+      costoMOMes, costoMOMesAnt,
     ] = await Promise.all([
       db.select({ c: count() }).from(recepciones).where(gte(recepciones.created_at, startOfWeekStr)),
       db.select({ c: count() }).from(recepciones).where(and(gte(recepciones.created_at, startOfLastWeekStr), lt(recepciones.created_at, startOfWeekStr))),
@@ -261,6 +267,28 @@ export async function GET() {
         .from(ordenes_trabajo)
         .leftJoin(cotizaciones, eq(ordenes_trabajo.cotizacion_id, cotizaciones.id))
         .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesActual}%`))),
+
+      // Costo repuestos OTs este mes
+      db.select({ total: sql<number>`COALESCE(SUM(${ot_repuestos.cantidad} * ${ot_repuestos.precio_costo_snapshot}), 0)` })
+        .from(ot_repuestos)
+        .innerJoin(ordenes_trabajo, eq(ot_repuestos.ot_id, ordenes_trabajo.id))
+        .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesActual}%`))),
+
+      // Costo repuestos OTs mes anterior
+      db.select({ total: sql<number>`COALESCE(SUM(${ot_repuestos.cantidad} * ${ot_repuestos.precio_costo_snapshot}), 0)` })
+        .from(ot_repuestos)
+        .innerJoin(ordenes_trabajo, eq(ot_repuestos.ot_id, ordenes_trabajo.id))
+        .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesAnterior}%`))),
+
+      // Costo mano de obra OTs este mes
+      db.select({ total: sql<number>`COALESCE(SUM(COALESCE(${ordenes_trabajo.costo_mo_override}, COALESCE(${ordenes_trabajo.horas_trabajadas}, 0) * ${valorHora})), 0)` })
+        .from(ordenes_trabajo)
+        .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesActual}%`))),
+
+      // Costo mano de obra OTs mes anterior
+      db.select({ total: sql<number>`COALESCE(SUM(COALESCE(${ordenes_trabajo.costo_mo_override}, COALESCE(${ordenes_trabajo.horas_trabajadas}, 0) * ${valorHora})), 0)` })
+        .from(ordenes_trabajo)
+        .where(and(eq(ordenes_trabajo.estado, 'entregado'), like(ordenes_trabajo.updated_at, `${mesAnterior}%`))),
     ]);
 
     const metricas = {
@@ -276,6 +304,12 @@ export async function GET() {
       ingresoMesAnterior: Number(otsMesAnt[0].ingreso) || 0,
       diasPromedioEnTaller: tiempoTaller[0].avg ?? 0,
       diasPromedioCotAOT: tiempoCotOT[0].avg ?? 0,
+      costoPromedioPorOT: otsMes[0].c > 0
+        ? (Number(costoRepMes[0].total) + Number(costoMOMes[0].total)) / otsMes[0].c
+        : 0,
+      costoPromedioPorOTMesAnterior: otsMesAnt[0].c > 0
+        ? (Number(costoRepMesAnt[0].total) + Number(costoMOMesAnt[0].total)) / otsMesAnt[0].c
+        : 0,
     };
 
     return NextResponse.json({

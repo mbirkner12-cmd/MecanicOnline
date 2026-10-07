@@ -12,8 +12,8 @@ import {
 
 interface Props {
   otId: number;
-  repuestosInventario: Array<{ id: number; nombre: string; sku: string }>;
-  repuestesCot: Array<{ detalle: string; idx: number }>;
+  repuestosInventario: Array<{ id: number; nombre: string; sku: string; cantidad: number }>;
+  repuestesCot: Array<{ detalle: string; idx: number; cantidad: number }>;
   onGuardado: () => void;
 }
 
@@ -33,6 +33,7 @@ interface ExtractedData {
   total_neto: number;
   total_iva: number;
   total: number;
+  neto_origen: string | null;
   items: Array<{
     nombre: string;
     cantidad: number;
@@ -68,6 +69,9 @@ export function SubirFacturaOT({ otId, repuestosInventario, repuestesCot, onGuar
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [facturaRefNeto, setFacturaRefNeto] = useState<number | null>(null);
+  const [facturaRefTotal, setFacturaRefTotal] = useState<number | null>(null);
+  const [netoOrigen, setNetoOrigen] = useState<string | null>(null);
 
   function resetAndClose() {
     setStep(1);
@@ -85,6 +89,9 @@ export function SubirFacturaOT({ otId, repuestosInventario, repuestesCot, onGuar
     setPdfUrl(null);
     setSaveError('');
     setSaving(false);
+    setFacturaRefNeto(null);
+    setFacturaRefTotal(null);
+    setNetoOrigen(null);
     setOpen(false);
   }
 
@@ -106,9 +113,9 @@ export function SubirFacturaOT({ otId, repuestosInventario, repuestesCot, onGuar
     setStep(2);
 
     try {
-      const repuestosParaAI: Array<{ key: string; nombre: string; sku?: string }> = [
-        ...repuestosInventario.map(r => ({ key: `inv_${r.id}`, nombre: r.nombre, sku: r.sku })),
-        ...repuestesCot.map(r => ({ key: `cot_${r.idx}`, nombre: r.detalle })),
+      const repuestosParaAI: Array<{ key: string; nombre: string; sku?: string; cantidad_ot: number }> = [
+        ...repuestosInventario.map(r => ({ key: `inv_${r.id}`, nombre: r.nombre, sku: r.sku, cantidad_ot: r.cantidad })),
+        ...repuestesCot.map(r => ({ key: `cot_${r.idx}`, nombre: r.detalle, cantidad_ot: r.cantidad })),
       ];
 
       const fd = new FormData();
@@ -124,23 +131,29 @@ export function SubirFacturaOT({ otId, repuestosInventario, repuestesCot, onGuar
       const data = await res.json() as { extracted: ExtractedData; pdf_url: string };
       const ext = data.extracted;
 
+      const itemsCargados = (ext.items ?? []).map(item => ({
+        localId: crypto.randomUUID(),
+        nombre: item.nombre ?? '',
+        cantidad: item.cantidad ?? 1,
+        precioUnitario: item.precio_unitario ?? 0,
+        matchKey: item.match_key ?? null,
+      }));
+      const sumaItemsNeto = itemsCargados.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0);
+
       setNumero(ext.numero ?? '');
       setProveedorNombre(ext.proveedor_nombre ?? '');
       setProveedorRut(ext.proveedor_rut ?? '');
       setFechaEmision(ext.fecha_emision ?? '');
-      setTotalNeto(String(ext.total_neto ?? 0));
-      setTotalIva(String(ext.total_iva ?? 0));
-      setTotalTotal(String(ext.total ?? 0));
+      // Totales calculados desde los ítems proporcionales (no el total completo de la factura)
+      setTotalNeto(String(Math.round(sumaItemsNeto)));
+      setTotalIva(String(Math.round(sumaItemsNeto * 0.19)));
+      setTotalTotal(String(Math.round(sumaItemsNeto * 1.19)));
+      // Guardar totales de la factura completa como referencia
+      setFacturaRefNeto(ext.total_neto ?? null);
+      setFacturaRefTotal(ext.total ?? null);
+      setNetoOrigen(ext.neto_origen ?? null);
       setPdfUrl(data.pdf_url);
-      setItems(
-        (ext.items ?? []).map(item => ({
-          localId: crypto.randomUUID(),
-          nombre: item.nombre ?? '',
-          cantidad: item.cantidad ?? 1,
-          precioUnitario: item.precio_unitario ?? 0,
-          matchKey: item.match_key ?? null,
-        }))
-      );
+      setItems(itemsCargados);
       setStep(3);
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : 'Error al analizar la factura');
@@ -306,6 +319,17 @@ export function SubirFacturaOT({ otId, repuestosInventario, repuestesCot, onGuar
               </DialogHeader>
 
               <div className="space-y-5 py-2 overflow-y-auto flex-1">
+                {/* Referencia: totales completos de la factura original */}
+                {(facturaRefNeto !== null || facturaRefTotal !== null) && (
+                  <div className="rounded-lg bg-zinc-50 border border-zinc-200 px-3 py-2.5 flex items-start gap-2 text-xs text-zinc-500">
+                    <span className="shrink-0 font-semibold text-zinc-400 mt-0.5">Factura completa (referencia)</span>
+                    <span className="ml-auto text-right leading-relaxed">
+                      {facturaRefNeto !== null && <span className="block">Neto: <span className="font-medium text-zinc-700">{formatCLP(facturaRefNeto)}</span></span>}
+                      {facturaRefTotal !== null && <span className="block">Total c/IVA: <span className="font-medium text-zinc-700">{formatCLP(facturaRefTotal)}</span></span>}
+                    </span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {[
                     { label: 'N° Factura', value: numero, set: setNumero, placeholder: 'Folio' },
@@ -321,16 +345,23 @@ export function SubirFacturaOT({ otId, repuestosInventario, repuestesCot, onGuar
                     <label className="text-xs text-zinc-500 mb-1 block">Fecha emisión</label>
                     <input type="date" className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900" value={fechaEmision} onChange={e => setFechaEmision(e.target.value)} />
                   </div>
-                  {[
-                    { label: 'Total neto ($)', value: totalNeto, set: setTotalNeto },
-                    { label: 'IVA ($)', value: totalIva, set: setTotalIva },
-                    { label: 'Total ($)', value: totalTotal, set: setTotalTotal },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <label className="text-xs text-zinc-500 mb-1 block">{f.label}</label>
-                      <input type="number" min="0" className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900" value={f.value} onChange={e => f.set(e.target.value)} placeholder="0" />
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <label className="text-xs text-zinc-500">Neto esta OT (sin IVA)</label>
+                      {netoOrigen && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 font-medium">{netoOrigen}</span>
+                      )}
                     </div>
-                  ))}
+                    <input type="number" min="0" className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900" value={totalNeto} onChange={e => setTotalNeto(e.target.value)} placeholder="0" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-1 block">IVA 19%</label>
+                    <input type="number" min="0" className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900" value={totalIva} onChange={e => setTotalIva(e.target.value)} placeholder="0" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-1 block">Total esta OT (con IVA)</label>
+                    <input type="number" min="0" className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-900" value={totalTotal} onChange={e => setTotalTotal(e.target.value)} placeholder="0" />
+                  </div>
                 </div>
 
                 <div>

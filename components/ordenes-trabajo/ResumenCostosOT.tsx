@@ -583,8 +583,8 @@ export function ResumenCostosOT({ otId, cotizacion, fechaInicio, fechaFin, horas
             <div className="pt-1">
               <SubirFacturaOT
                 otId={otId}
-                repuestosInventario={repuestos.map(r => ({ id: r.id, nombre: r.nombre, sku: r.sku }))}
-                repuestesCot={repsCot.map((r, i) => ({ detalle: r.detalle, idx: i }))}
+                repuestosInventario={repuestos.map(r => ({ id: r.id, nombre: r.nombre, sku: r.sku, cantidad: r.cantidad }))}
+                repuestesCot={repsCot.map((r, i) => ({ detalle: r.detalle, idx: i, cantidad: r.cantidad }))}
                 onGuardado={recargarRepuestosYFacturas}
               />
               {facturas.length > 0 && (

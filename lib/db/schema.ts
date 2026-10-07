@@ -108,7 +108,7 @@ export const cotizaciones = sqliteTable('cotizaciones', {
   retiro_entrega_monto: real('retiro_entrega_monto').default(0).notNull(),
   total: real('total').notNull(),
   estado: text('estado', {
-    enum: ['pendiente', 'aceptada', 'rechazada'],
+    enum: ['pendiente', 'aceptada', 'rechazada', 'vencida'],
   }).notNull().default('pendiente'),
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
   updated_at: text('updated_at').default(sql`(datetime('now'))`).notNull(),

@@ -8,7 +8,7 @@ import {
   cotizacion_repuestos,
   ordenes_trabajo,
 } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and, lt } from 'drizzle-orm';
 
 // ── Shared: build joined query ───────────────────────────────────────────────
 async function getCotizacionById(id: number) {
@@ -83,6 +83,40 @@ export async function GET(
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
+    // Auto-expire if this cotizacion is pending and older than 15 days
+    const expiredCheck = await db
+      .select({ id: cotizaciones.id, recepcion_id: cotizaciones.recepcion_id })
+      .from(cotizaciones)
+      .where(
+        and(
+          eq(cotizaciones.id, numId),
+          eq(cotizaciones.estado, 'pendiente'),
+          lt(cotizaciones.created_at, sql`datetime('now', '-15 days')`)
+        )
+      )
+      .limit(1);
+
+    if (expiredCheck.length > 0) {
+      const { recepcion_id } = expiredCheck[0];
+      await db.update(cotizaciones)
+        .set({ estado: 'vencida', updated_at: sql`(datetime('now'))` })
+        .where(eq(cotizaciones.id, numId));
+
+      await db.delete(cotizacion_repuestos)
+        .where(eq(cotizacion_repuestos.cotizacion_id, numId));
+
+      if (recepcion_id != null) {
+        await db.update(recepciones)
+          .set({ estado: 'cotizacion_rechazada', updated_at: sql`(datetime('now'))` })
+          .where(
+            and(
+              eq(recepciones.id, recepcion_id),
+              eq(recepciones.estado, 'cotizacion_pendiente')
+            )
+          );
+      }
+    }
+
     const cotizacion = await getCotizacionById(numId);
     if (!cotizacion) {
       return NextResponse.json({ error: 'Cotización no encontrada' }, { status: 404 });
@@ -119,7 +153,7 @@ export async function PUT(
       recomendaciones?: unknown[];
       retiro_entrega_monto?: number;
       total?: number;
-      estado?: 'pendiente' | 'aceptada' | 'rechazada';
+      estado?: 'pendiente' | 'aceptada' | 'rechazada' | 'vencida';
       recepcion_id?: number | null;
     };
 

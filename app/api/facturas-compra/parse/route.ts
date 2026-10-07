@@ -53,13 +53,16 @@ export async function POST(request: Request) {
 
     const prompt = `Analiza esta factura de compra chilena y devuelve SOLO un JSON sin texto adicional.
 
-Repuestos de la OT a los que puedes asignar ítems (usa el "key" si hay coincidencia de nombre):
+Repuestos que necesita esta OT (cada uno tiene "cantidad_ot" = unidades requeridas para este vehículo):
 ${repuestosStr}
 
 Instrucciones:
-- En "items" incluye SOLO repuestos físicos/materiales, NO mano de obra ni servicios
+- En "items" incluye SOLO repuestos físicos/materiales, NO mano de obra, servicios ni fletes
 - Para "match_key": usa la "key" del repuesto más similar por nombre, o null si no hay coincidencia clara
-- "precio_unitario" y "total" deben ser en pesos chilenos sin IVA (neto)
+- FACTURA COMPARTIDA: Si un ítem de la factura tiene más cantidad que la "cantidad_ot" del repuesto que coincide, extrae SOLO "cantidad_ot" unidades y calcula total = precio_unitario × cantidad_ot. Esto sucede cuando una factura cubre repuestos para múltiples vehículos.
+- "precio_unitario" y "total" de cada ítem deben ser en pesos chilenos sin IVA (neto)
+- "total_neto" y "total" de la factura corresponden al monto TOTAL de la factura (no solo la parte de la OT)
+- Para "neto_origen" indica: "extraído de factura" si el valor neto está explícito en el documento, o "calculado (total ÷ 1.19)" si lo derivaste del monto con IVA
 - Si no puedes extraer algún campo, usa null o 0
 
 Estructura exacta del JSON:
@@ -71,6 +74,7 @@ Estructura exacta del JSON:
   "total_neto": 0,
   "total_iva": 0,
   "total": 0,
+  "neto_origen": "extraído de factura",
   "items": [
     {
       "nombre": "descripción clara del ítem",

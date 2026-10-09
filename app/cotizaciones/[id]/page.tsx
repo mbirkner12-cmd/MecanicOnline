@@ -403,7 +403,7 @@ export default function CotizacionDetallePage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {cotizacion.estado === "pendiente" && (
+            {(cotizacion.estado === "pendiente" || cotizacion.estado === "vencida") && (
               <>
                 <Button
                   variant="outline"
@@ -414,15 +414,17 @@ export default function CotizacionDetallePage() {
                 >
                   Aceptar
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => handleCambiarEstado("rechazada")}
-                  disabled={actionLoading}
-                >
-                  Rechazar
-                </Button>
+                {cotizacion.estado === "pendiente" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => handleCambiarEstado("rechazada")}
+                    disabled={actionLoading}
+                  >
+                    Rechazar
+                  </Button>
+                )}
               </>
             )}
             {(cotizacion.cliente?.telefono ?? cotizacion.cliente?.whatsapp) && (
@@ -443,7 +445,7 @@ export default function CotizacionDetallePage() {
                 PDF
               </Button>
             </a>
-            {cotizacion.estado !== "vencida" && cotizacion.estado !== "rechazada" && (
+            {cotizacion.estado !== "rechazada" && (
               <Button onClick={() => setEditOpen(true)} size="sm" className="flex items-center gap-1.5">
                 <Pencil className="size-4" />
                 Editar
@@ -614,7 +616,7 @@ export default function CotizacionDetallePage() {
         <RepuestosCard title="Repuestos" items={repuestos} subtotalLabel="Subtotal repuestos" />
 
         {/* Repuestos del inventario */}
-        {cotizacion.estado !== 'rechazada' && cotizacion.estado !== 'vencida' && (
+        {cotizacion.estado !== 'rechazada' && (
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Repuestos del inventario</CardTitle>
@@ -622,7 +624,7 @@ export default function CotizacionDetallePage() {
             <CardContent>
               <RepuestosCotizacion
                 cotizacionId={cotizacion.id}
-                editable={cotizacion.estado === 'pendiente'}
+                editable={cotizacion.estado === 'pendiente' || cotizacion.estado === 'vencida'}
                 vehiculo={cotizacion.vehiculo ? {
                   marca: cotizacion.vehiculo.marca,
                   modelo: cotizacion.vehiculo.modelo,

@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       nombre: usuario.nombre,
       rol: usuario.rol as 'jefe' | 'mecanico',
       mecanicoId: usuario.mecanico_id,
+      permisos: JSON.parse(usuario.permisos ?? '[]') as string[],
     });
 
     const response = NextResponse.json({

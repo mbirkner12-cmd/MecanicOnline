@@ -34,6 +34,7 @@ interface Usuario {
   rol: 'jefe' | 'mecanico';
   mecanico_id: number | null;
   activo: boolean;
+  permisos: string;
   created_at: string;
   mecanico: { id: number; nombre: string; rut: string } | null;
 }
@@ -42,6 +43,19 @@ const ROL_LABELS: Record<string, string> = {
   jefe: 'Jefe',
   mecanico: 'Mecánico',
 };
+
+const PERMISOS_LIST: { key: string; label: string }[] = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'recepcion', label: 'Recepciones' },
+  { key: 'ordenes-trabajo', label: 'Órdenes de trabajo' },
+  { key: 'cotizaciones', label: 'Cotizaciones' },
+  { key: 'cobros', label: 'Cobros' },
+  { key: 'inventario', label: 'Inventario' },
+  { key: 'clientes', label: 'Clientes' },
+  { key: 'vehiculos', label: 'Vehículos' },
+  { key: 'calendario', label: 'Calendario' },
+  { key: 'rentabilidad', label: 'Rentabilidad' },
+];
 
 const SELECT_CLS =
   'flex h-10 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50';
@@ -67,6 +81,7 @@ export default function UsuariosPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Usuario | null>(null);
   const [editForm, setEditForm] = useState({ nombre: '', username: '', rol: 'mecanico' as 'jefe' | 'mecanico', mecanico_id: '' });
+  const [editPermisos, setEditPermisos] = useState<string[]>([]);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
@@ -126,6 +141,7 @@ export default function UsuariosPage() {
   const openEdit = (u: Usuario) => {
     setEditTarget(u);
     setEditForm({ nombre: u.nombre, username: u.username, rol: u.rol, mecanico_id: u.mecanico_id ? String(u.mecanico_id) : '' });
+    setEditPermisos(u.permisos ? JSON.parse(u.permisos) as string[] : []);
     setEditError('');
     setEditOpen(true);
   };
@@ -145,6 +161,7 @@ export default function UsuariosPage() {
           mecanico_id: editForm.rol === 'mecanico' && editForm.mecanico_id
             ? Number(editForm.mecanico_id)
             : null,
+          permisos: editPermisos,
         }),
       });
       const data = await res.json() as { error?: string };
@@ -227,6 +244,7 @@ export default function UsuariosPage() {
                   <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Usuario</th>
                   <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Rol</th>
                   <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Mecánico vinculado</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Permisos</th>
                   <th className="text-left py-2 px-3 text-xs font-semibold text-zinc-500">Estado</th>
                   <th className="text-right py-2 px-3 text-xs font-semibold text-zinc-500">Acciones</th>
                 </tr>
@@ -243,6 +261,14 @@ export default function UsuariosPage() {
                     </td>
                     <td className="py-2.5 px-3 text-zinc-600">
                       {u.mecanico?.nombre ?? <span className="text-zinc-400">—</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-zinc-600">
+                      {u.rol === 'mecanico' ? (() => {
+                        const p = u.permisos ? JSON.parse(u.permisos) as string[] : [];
+                        return p.length > 0
+                          ? <span className="text-xs font-medium">{p.length} {p.length === 1 ? 'sección' : 'secciones'}</span>
+                          : <span className="text-zinc-400">—</span>;
+                      })() : <span className="text-zinc-400">—</span>}
                     </td>
                     <td className="py-2.5 px-3">
                       <Badge variant={u.activo ? 'default' : 'secondary'}>
@@ -409,6 +435,30 @@ export default function UsuariosPage() {
                     <option key={m.id} value={m.id}>{m.nombre}</option>
                   ))}
                 </select>
+              </div>
+            )}
+            {editForm.rol === 'mecanico' && (
+              <div className="flex flex-col gap-2">
+                <Label>Permisos de secciones</Label>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {PERMISOS_LIST.map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-2 text-sm text-zinc-700 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="rounded border-zinc-300 text-zinc-900"
+                        checked={editPermisos.includes(key)}
+                        onChange={(e) => {
+                          setEditPermisos(prev =>
+                            e.target.checked
+                              ? [...prev, key]
+                              : prev.filter(p => p !== key)
+                          );
+                        }}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
             {editError && (

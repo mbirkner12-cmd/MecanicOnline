@@ -34,20 +34,36 @@ export async function middleware(req: NextRequest) {
     const { payload } = await jwtVerify(token, SECRET);
     const rol = payload.rol as string;
 
-    // Mecánico intentando acceder a rutas del jefe
-    const jefeOnlyPaths = ['/cotizaciones', '/configuracion', '/clientes'];
-    if (rol === 'mecanico' && jefeOnlyPaths.some(p => pathname.startsWith(p))) {
-      return NextResponse.redirect(new URL('/mecanico', req.url));
-    }
-
     // Jefe intentando acceder a rutas del mecánico
     if (rol === 'jefe' && pathname.startsWith('/mecanico')) {
       return NextResponse.redirect(new URL('/recepcion', req.url));
     }
 
-    // Mecánico en raíz o recepción → redirigir a su dashboard
-    if (rol === 'mecanico' && (pathname === '/' || pathname === '/recepcion')) {
-      return NextResponse.redirect(new URL('/mecanico', req.url));
+    if (rol === 'mecanico') {
+      // Rutas siempre bloqueadas para mecánicos (sin importar permisos)
+      const ALWAYS_BLOCKED = ['/configuracion'];
+      if (ALWAYS_BLOCKED.some(p => pathname.startsWith(p))) {
+        return NextResponse.redirect(new URL('/mecanico', req.url));
+      }
+
+      // Rutas del admin que se pueden habilitar con permisos
+      const ADMIN_PATHS = [
+        '/dashboard', '/recepcion', '/ordenes-trabajo', '/cotizaciones',
+        '/cobros', '/inventario', '/clientes', '/vehiculos', '/calendario', '/rentabilidad',
+      ];
+      const adminPath = ADMIN_PATHS.find(p => pathname.startsWith(p));
+      if (adminPath) {
+        const permisos = (payload.permisos as string[]) ?? [];
+        const key = adminPath.replace('/', '');
+        if (!permisos.includes(key)) {
+          return NextResponse.redirect(new URL('/mecanico', req.url));
+        }
+      }
+
+      // Redirigir raíz
+      if (pathname === '/') {
+        return NextResponse.redirect(new URL('/mecanico', req.url));
+      }
     }
 
     return NextResponse.next();

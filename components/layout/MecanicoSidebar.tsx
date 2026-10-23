@@ -4,7 +4,20 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Wrench, Car, ClipboardList, LogOut } from 'lucide-react';
+import {
+  Wrench,
+  Car,
+  ClipboardList,
+  LogOut,
+  LayoutDashboard,
+  ClipboardCheck,
+  FileText,
+  DollarSign,
+  Package,
+  Users,
+  Calendar,
+  TrendingUp,
+} from 'lucide-react';
 import { useSession } from '@/lib/hooks/useSession';
 
 type NavItem = {
@@ -18,6 +31,19 @@ const navItems: NavItem[] = [
   { label: 'Mis vehículos', href: '/mecanico', icon: Car, exact: true },
   { label: 'Mis órdenes', href: '/mecanico/ordenes-trabajo', icon: ClipboardList },
 ];
+
+const PERMISOS_NAV: Record<string, NavItem> = {
+  dashboard: { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  recepcion: { label: 'Recepciones', href: '/recepcion', icon: ClipboardCheck },
+  'ordenes-trabajo': { label: 'Órdenes de trabajo', href: '/ordenes-trabajo', icon: Wrench },
+  cotizaciones: { label: 'Cotizaciones', href: '/cotizaciones', icon: FileText },
+  cobros: { label: 'Cobros', href: '/cobros', icon: DollarSign },
+  inventario: { label: 'Inventario', href: '/inventario', icon: Package },
+  clientes: { label: 'Clientes', href: '/clientes', icon: Users },
+  vehiculos: { label: 'Vehículos', href: '/vehiculos', icon: Car },
+  calendario: { label: 'Calendario', href: '/calendario', icon: Calendar },
+  rentabilidad: { label: 'Rentabilidad', href: '/rentabilidad', icon: TrendingUp },
+};
 
 function NavLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -62,6 +88,10 @@ export function MecanicoSidebar({ open, onClose }: MecanicoSidebarProps) {
     router.push('/login');
   };
 
+  const permisosExtra: NavItem[] = (session?.permisos ?? [])
+    .map((key) => PERMISOS_NAV[key])
+    .filter((item): item is NavItem => item !== undefined);
+
   return (
     <aside
       className={cn(
@@ -80,10 +110,23 @@ export function MecanicoSidebar({ open, onClose }: MecanicoSidebarProps) {
         <p className="text-xs text-zinc-400 mt-0.5">Mecánico</p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
           <NavLink key={item.href} item={item} onNavigate={onClose} />
         ))}
+
+        {permisosExtra.length > 0 && (
+          <>
+            <div className="pt-3 pb-1">
+              <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+                Secciones
+              </span>
+            </div>
+            {permisosExtra.map((item) => (
+              <NavLink key={item.href} item={item} onNavigate={onClose} />
+            ))}
+          </>
+        )}
       </nav>
 
       <div className="p-4 border-t border-zinc-200">

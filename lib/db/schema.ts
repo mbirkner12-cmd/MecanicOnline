@@ -92,6 +92,7 @@ export const usuarios = sqliteTable('usuarios', {
   rol: text('rol', { enum: ['jefe', 'mecanico'] }).notNull(),
   mecanico_id: integer('mecanico_id').references(() => mecanicos.id),
   activo: integer('activo', { mode: 'boolean' }).default(true).notNull(),
+  permisos: text('permisos').default('[]').notNull(),
   created_at: text('created_at').default(sql`(datetime('now'))`).notNull(),
 });
 

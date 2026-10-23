@@ -10,6 +10,7 @@ export interface SessionPayload {
   nombre: string;
   rol: 'jefe' | 'mecanico';
   mecanicoId: number | null;
+  permisos: string[];
 }
 
 export async function signSession(payload: SessionPayload): Promise<string> {

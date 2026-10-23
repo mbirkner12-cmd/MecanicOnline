@@ -14,6 +14,7 @@ export async function GET() {
         rol: usuarios.rol,
         mecanico_id: usuarios.mecanico_id,
         activo: usuarios.activo,
+        permisos: usuarios.permisos,
         created_at: usuarios.created_at,
         mecanico: {
           id: mecanicos.id,
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
       password: string;
       rol: 'jefe' | 'mecanico';
       mecanico_id?: number | null;
+      permisos?: string[];
     };
 
     const { nombre, username, password, rol, mecanico_id } = body;
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
         rol,
         mecanico_id: mecanico_id ?? null,
         activo: true,
+        permisos: JSON.stringify(body.permisos ?? []),
       })
       .returning();
 

@@ -17,6 +17,7 @@ export async function PUT(
       rol?: 'jefe' | 'mecanico';
       mecanico_id?: number | null;
       activo?: boolean;
+      permisos?: string[];
     };
 
     const updateData: Record<string, unknown> = {};
@@ -26,6 +27,7 @@ export async function PUT(
     if (body.rol !== undefined) updateData.rol = body.rol;
     if (body.mecanico_id !== undefined) updateData.mecanico_id = body.mecanico_id ?? null;
     if (body.activo !== undefined) updateData.activo = body.activo;
+    if (body.permisos !== undefined) updateData.permisos = JSON.stringify(body.permisos);
     if (body.password) {
       updateData.password_hash = bcrypt.hashSync(body.password, 10);
     }

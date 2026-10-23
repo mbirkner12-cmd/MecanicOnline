@@ -1,0 +1,1 @@
+ALTER TABLE usuarios ADD COLUMN permisos TEXT NOT NULL DEFAULT '[]';

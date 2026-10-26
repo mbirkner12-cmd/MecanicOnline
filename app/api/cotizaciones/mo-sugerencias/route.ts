@@ -23,7 +23,9 @@ export async function GET() {
       try {
         const items = JSON.parse(row.mano_de_obra_detalle ?? '[]') as { detalle: string; monto: number }[];
         for (const item of items) {
-          const d = item.detalle?.trim();
+          // Strip legacy "M/O" prefix some old records have
+          const raw = item.detalle?.trim() ?? '';
+          const d = raw.replace(/^m\/o\s*/i, '').trim();
           if (!d) continue;
           const key = d.toLowerCase();
           if (!seen.has(key)) {

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 
 export interface AutocompleteSuggestion {
   label: string;
+  secondary?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
 }
@@ -142,11 +143,14 @@ export function AutocompleteInput({
               onMouseDown={e => e.preventDefault()}
               onClick={() => handleSelect(s)}
               onMouseEnter={() => setHighlighted(i)}
-              className={`px-3 py-2 cursor-pointer truncate ${
+              className={`px-3 py-2 cursor-pointer flex items-center justify-between gap-3 ${
                 i === highlighted ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'
               }`}
             >
-              {s.label}
+              <span className="truncate">{s.label}</span>
+              {s.secondary && (
+                <span className="text-xs text-zinc-400 flex-shrink-0">{s.secondary}</span>
+              )}
             </li>
           ))}
         </ul>,

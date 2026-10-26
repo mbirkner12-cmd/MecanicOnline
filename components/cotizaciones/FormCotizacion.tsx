@@ -298,7 +298,13 @@ export function FormCotizacion({
     fetch('/api/cotizaciones/mo-sugerencias')
       .then(r => r.json())
       .then((data: MOSugerencia[]) =>
-        setMoSugerencias(data.map(s => ({ label: s.detalle, data: s.monto })))
+        setMoSugerencias(data.map(s => ({
+          label: s.detalle,
+          data: s.monto,
+          secondary: s.monto > 0
+            ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(s.monto)
+            : undefined,
+        })))
       )
       .catch(() => { /* ignore */ });
   }, []);

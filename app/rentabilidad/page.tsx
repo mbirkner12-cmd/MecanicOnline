@@ -825,9 +825,10 @@ export default function RentabilidadPage() {
                   'Costo Repuestos': c.costoReps,
                   'Ganancia': c.ganancia,
                   'Margen %': parseFloat(c.margen.toFixed(1)),
+                  'Facturas': (facturasMap[ot.id] ?? []).map(f => f.numero).join(', '),
                   'En EE': eeIds.has(ot.id) ? 'Sí' : 'No',
                 };
-              }), [12, 10, 22, 18, 14, 14, 16, 14, 10, 8])} />
+              }), [12, 10, 22, 18, 14, 14, 16, 14, 10, 20, 8])} />
             );
           })()}
         </div>

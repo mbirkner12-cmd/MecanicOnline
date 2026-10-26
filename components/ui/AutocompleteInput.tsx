@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect, useId } from 'react';
+import { useState, useRef, useEffect, useId, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 interface AutocompleteInputProps {
   value: string;
@@ -27,8 +28,8 @@ export function AutocompleteInput({
 }: AutocompleteInputProps) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const listId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = value.trim()
@@ -37,23 +38,54 @@ export function AutocompleteInput({
 
   const showDropdown = open && filtered.length > 0;
 
+  const updatePosition = useCallback(() => {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 2,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+  }, []);
+
   useEffect(() => {
     setHighlighted(-1);
   }, [value]);
 
   useEffect(() => {
+    if (!open) return;
+    const onScroll = () => setOpen(false);
+    const onResize = () => { updatePosition(); };
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (!open) return;
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (inputRef.current && !inputRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  }, [open]);
+
+  function handleFocus() {
+    updatePosition();
+    setOpen(true);
+  }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (!showDropdown) {
       if (e.key === 'ArrowDown' && filtered.length > 0) {
+        updatePosition();
         setOpen(true);
         setHighlighted(0);
         e.preventDefault();
@@ -81,31 +113,13 @@ export function AutocompleteInput({
     inputRef.current?.focus();
   }
 
-  return (
-    <div ref={containerRef} className="relative">
-      <input
-        ref={inputRef}
-        type="text"
-        role="combobox"
-        aria-expanded={showDropdown}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        className={className}
-        placeholder={placeholder}
-        value={value}
-        spellCheck={spellCheck}
-        autoCorrect={autoCorrect}
-        autoCapitalize={autoCapitalize}
-        lang={lang}
-        onChange={e => onChange(e.target.value)}
-        onFocus={() => setOpen(true)}
-        onKeyDown={handleKeyDown}
-      />
-      {showDropdown && (
+  const dropdown = showDropdown && typeof document !== 'undefined'
+    ? createPortal(
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-50 left-0 top-full mt-0.5 w-full max-h-52 overflow-y-auto bg-white border border-zinc-200 rounded-lg shadow-lg text-sm"
+          style={dropdownStyle}
+          className="max-h-52 overflow-y-auto bg-white border border-zinc-200 rounded-lg shadow-lg text-sm"
         >
           {filtered.map((s, i) => (
             <li
@@ -121,8 +135,32 @@ export function AutocompleteInput({
               {s}
             </li>
           ))}
-        </ul>
-      )}
-    </div>
+        </ul>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="text"
+        role="combobox"
+        aria-expanded={showDropdown}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        className={className}
+        placeholder={placeholder}
+        value={value}
+        spellCheck={spellCheck}
+        autoCorrect={autoCorrect}
+        autoCapitalize={autoCapitalize}
+        lang={lang}
+        onChange={e => onChange(e.target.value)}
+        onFocus={handleFocus}
+        onKeyDown={handleKeyDown}
+      />
+      {dropdown}
+    </>
   );
 }

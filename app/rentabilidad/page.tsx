@@ -159,42 +159,27 @@ const PERIODOS = [
   { label: 'Todo', days: 0 },
 ] as const;
 
-// ── Export Excel ─────────────────────────────────────────────────────────────
-async function exportarExcel(
-  rows: OTRow[],
-  valorHora: number,
-  costoRepuestosPorOT: Record<number, { costo: number; venta: number }>,
-  facturasMap: Record<number, FacturaRow[]>,
-  mecanicoFactores: Record<number, { tipo_pago: string; factor_boleta: number }>,
-) {
+// ── Export helpers ────────────────────────────────────────────────────────────
+async function exportSheet(filename: string, sheetName: string, rows: Record<string, unknown>[], colWidths?: number[]) {
   const XLSX = await import('xlsx');
-  const data = rows.map(ot => {
-    const factor = ot.mecanico_id != null ? (mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
-    const c = calcOT(ot, valorHora, costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
-    return {
-      'N° OT': ot.numero,
-      'Patente': ot.vehiculo_patente ?? '',
-      'Cliente': ot.cliente_nombre ?? '',
-      'Mecánico': ot.mecanico_nombre ?? '',
-      'Ingreso': c.ingreso,
-      'Costo MO': c.costoMO,
-      'Costo Repuestos': c.costoReps,
-      'Ganancia': c.ganancia,
-      'Margen %': parseFloat(c.margen.toFixed(1)),
-    };
-  });
-
-  const ws = XLSX.utils.json_to_sheet(data);
-
-  // Ancho de columnas
-  ws['!cols'] = [
-    { wch: 12 }, { wch: 10 }, { wch: 22 }, { wch: 18 },
-    { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 10 },
-  ];
-
+  const ws = XLSX.utils.json_to_sheet(rows);
+  if (colWidths) ws['!cols'] = colWidths.map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Rentabilidad');
-  XLSX.writeFile(wb, `rentabilidad_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+function BtnExcel({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="ml-auto flex items-center gap-1 px-2 py-1 rounded-md text-xs text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+      title="Exportar a Excel"
+    >
+      <Download className="h-3.5 w-3.5" />
+      Excel
+    </button>
+  );
 }
 
 // ── Barra horizontal simple ───────────────────────────────────────────────────
@@ -433,20 +418,23 @@ export default function RentabilidadPage() {
             className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${mesFiltro ? 'bg-white border-zinc-900 text-zinc-900 shadow-sm' : 'bg-zinc-100 border-transparent text-zinc-500 hover:text-zinc-700'}`}
             title="Filtrar por mes"
           />
-          {data && otsFiltradas.length > 0 && (
-            <button
-              onClick={() => exportarExcel(otsFiltradas, data.valorHora, data.costoRepuestosPorOT, facturasMap, data.mecanicoFactores)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-white hover:bg-zinc-700 transition-colors"
-              title="Exportar a Excel"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Excel
-            </button>
-          )}
         </div>
       </div>
 
       {/* ── Cards resumen ─────────────────────────────────────────────────── */}
+      <div className="flex justify-end -mb-2">
+        {stats && (
+          <BtnExcel onClick={() => exportSheet('resumen', 'Resumen', [
+            { 'Métrica': 'Ingresos netos', 'Valor': stats.totalIngreso },
+            { 'Métrica': 'Costo M.O.', 'Valor': stats.totalCostoMO },
+            { 'Métrica': 'Costo repuestos', 'Valor': stats.totalCostoReps },
+            { 'Métrica': 'Costos totales', 'Valor': stats.totalCosto },
+            { 'Métrica': 'Ganancia bruta', 'Valor': stats.totalGanancia },
+            { 'Métrica': 'Margen promedio %', 'Valor': parseFloat(stats.margenProm.toFixed(1)) },
+            { 'Métrica': 'N° OTs', 'Valor': otsFiltradas.length },
+          ], [30, 18])} />
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-zinc-200 p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -470,10 +458,18 @@ export default function RentabilidadPage() {
       {/* ── Ingresos por categoría ───────────────────────────────────────── */}
       {stats && stats.totalIngreso > 0 && (
         <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-zinc-400" />
-            Ingresos por categoría
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-zinc-400" />
+              Ingresos por categoría
+            </h2>
+            <BtnExcel onClick={() => exportSheet('ingresos_categoria', 'Ingresos', [
+              { 'Categoría': 'Mano de obra', 'Monto': stats!.totalIngresoMO, '%': parseFloat((stats!.totalIngreso > 0 ? stats!.totalIngresoMO / stats!.totalIngreso * 100 : 0).toFixed(1)) },
+              { 'Categoría': 'Repuestos (cotizados)', 'Monto': stats!.totalIngresoReps, '%': parseFloat((stats!.totalIngreso > 0 ? stats!.totalIngresoReps / stats!.totalIngreso * 100 : 0).toFixed(1)) },
+              { 'Categoría': 'Otros / retiro-entrega', 'Monto': Math.max(0, stats!.totalIngreso - stats!.totalIngresoMO - stats!.totalIngresoReps), '%': parseFloat((stats!.totalIngreso > 0 ? Math.max(0, stats!.totalIngreso - stats!.totalIngresoMO - stats!.totalIngresoReps) / stats!.totalIngreso * 100 : 0).toFixed(1)) },
+              { 'Categoría': 'Total neto', 'Monto': stats!.totalIngreso, '%': 100 },
+            ], [30, 16, 10])} />
+          </div>
           <div className="space-y-3">
             <Bar label="Mano de obra" value={stats.totalIngresoMO} max={stats.totalIngreso} color="bg-blue-400" />
             <Bar label="Repuestos (cotizados)" value={stats.totalIngresoReps} max={stats.totalIngreso} color="bg-violet-400" />
@@ -491,10 +487,20 @@ export default function RentabilidadPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Costo MO por mecánico */}
           <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
-              <Users className="h-4 w-4 text-zinc-400" />
-              Costo M.O. por mecánico
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
+                <Users className="h-4 w-4 text-zinc-400" />
+                Costo M.O. por mecánico
+              </h2>
+              {mecanicoCosts.length > 0 && (
+                <BtnExcel onClick={() => exportSheet('costo_mo_mecanico', 'Costo MO', mecanicoCosts.map(m => ({
+                  'Mecánico': m.nombre,
+                  'Total M.O.': m.totalMO,
+                  'N° OTs': m.nOTs,
+                  'Promedio por OT': m.nOTs > 0 ? Math.round(m.totalMO / m.nOTs) : 0,
+                })), [25, 16, 10, 18])} />
+              )}
+            </div>
             {mecanicoCosts.length === 0 ? (
               <p className="text-xs text-zinc-400 italic">Sin datos de mecánicos.</p>
             ) : (
@@ -520,10 +526,18 @@ export default function RentabilidadPage() {
 
           {/* Costos detalle (desde facturas) */}
           <div className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
-              <Package className="h-4 w-4 text-zinc-400" />
-              Costos detalle
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
+                <Package className="h-4 w-4 text-zinc-400" />
+                Costos detalle
+              </h2>
+              {(insumos.length > 0 || (stats && stats.totalCostoMO > 0)) && (
+                <BtnExcel onClick={() => exportSheet('costos_detalle', 'Costos', [
+                  ...(stats && stats.totalCostoMO > 0 ? [{ 'Categoría': 'Mano de obra', 'Gasto': stats.totalCostoMO }] : []),
+                  ...insumos.map(i => ({ 'Categoría': i.cat, 'Gasto': i.totalGasto })),
+                ], [25, 16])} />
+              )}
+            </div>
             {insumos.length === 0 && (!stats || stats.totalCostoMO === 0) ? (
               <p className="text-xs text-zinc-400 italic">Sin facturas de compra en el período.</p>
             ) : (
@@ -610,6 +624,20 @@ export default function RentabilidadPage() {
                   </span>
                 )}
                 <span className="text-xs text-zinc-400">{mesesPeriodo} {mesesPeriodo === 1 ? 'mes' : 'meses'}</span>
+                <BtnExcel onClick={() => exportSheet('estado_resultados', 'EE', [
+                  { 'Concepto': 'Ingresos netos', 'Monto': statsEE.totalIngreso },
+                  { 'Concepto': '  Costo M.O.', 'Monto': -statsEE.totalCostoMO },
+                  { 'Concepto': '  Costo repuestos', 'Monto': -statsEE.totalCostoReps },
+                  { 'Concepto': 'Margen bruto', 'Monto': margenBruto },
+                  ...gastos.filter(g => g.tipo === 'fijo').map(g => ({ 'Concepto': `  ${g.nombre}`, 'Monto': -(g.monto_mensual * mesesPeriodo) })),
+                  ...(totalFijos > 0 ? [{ 'Concepto': 'Total costos fijos', 'Monto': -totalFijos }] : []),
+                  ...gastos.filter(g => g.tipo === 'gav').map(g => ({ 'Concepto': `  ${g.nombre}`, 'Monto': -(g.monto_mensual * mesesPeriodo) })),
+                  ...(totalGav > 0 ? [{ 'Concepto': 'Total GAV', 'Monto': -totalGav }] : []),
+                  ...gastosPuntuales.map(g => ({ 'Concepto': `  ${g.nombre}`, 'Monto': -g.monto_mensual })),
+                  ...(totalPuntuales > 0 ? [{ 'Concepto': 'Total gastos puntuales', 'Monto': -totalPuntuales }] : []),
+                  { 'Concepto': 'Resultado del período (EBIT)', 'Monto': ebit },
+                  { 'Concepto': 'Margen neto %', 'Monto': parseFloat(margenNetoEEPct.toFixed(1)) },
+                ], [40, 16])} />
               </div>
             </div>
             <div className="space-y-0">
@@ -678,7 +706,13 @@ export default function RentabilidadPage() {
             <div className="px-5 py-3.5 border-b border-zinc-100 flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-zinc-400" />
               <h2 className="text-sm font-semibold text-zinc-700">Consumo vs Compras</h2>
-              <span className="ml-auto text-xs text-zinc-400">Consumo desde OTs · Gasto desde facturas</span>
+              <span className="text-xs text-zinc-400">Consumo desde OTs · Gasto desde facturas</span>
+              <BtnExcel onClick={() => exportSheet('consumo_compras', 'Consumo vs Compras', rows.map(r => ({
+                'Categoría': r.cat,
+                [`Consumido (${r.unidad})`]: r.cantidadUsada > 0 ? parseFloat(r.unidad === 'L' ? r.cantidadUsada.toFixed(1) : String(Math.round(r.cantidadUsada))) : 0,
+                'Gasto facturas ($)': r.gastoFacturas,
+                [`Precio / ${r.unidad}`]: r.precioPorUnidad > 0 ? Math.round(r.precioPorUnidad) : 0,
+              })), [22, 18, 18, 16])} />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -775,6 +809,27 @@ export default function RentabilidadPage() {
         <div className="px-4 py-3 border-b border-zinc-100 flex items-center gap-2">
           <BarChart3 className="h-4 w-4 text-zinc-400" />
           <h2 className="text-sm font-semibold text-zinc-700">Detalle por OT</h2>
+          {data && otsFiltradas.length > 0 && (() => {
+            const eeIds = new Set(otsParaEE.map(o => o.id));
+            return (
+              <BtnExcel onClick={() => exportSheet('detalle_ot', 'Detalle OTs', otsFiltradas.map(ot => {
+                const factor = ot.mecanico_id != null ? (data.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
+                const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
+                return {
+                  'N° OT': ot.numero,
+                  'Patente': ot.vehiculo_patente ?? '',
+                  'Cliente': ot.cliente_nombre ?? '',
+                  'Mecánico': ot.mecanico_nombre ?? '',
+                  'Ingreso': c.ingreso,
+                  'Costo MO': c.costoMO,
+                  'Costo Repuestos': c.costoReps,
+                  'Ganancia': c.ganancia,
+                  'Margen %': parseFloat(c.margen.toFixed(1)),
+                  'En EE': eeIds.has(ot.id) ? 'Sí' : 'No',
+                };
+              }), [12, 10, 22, 18, 14, 14, 16, 14, 10, 8])} />
+            );
+          })()}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

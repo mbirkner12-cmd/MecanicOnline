@@ -123,7 +123,7 @@ export default function CotizacionesPage() {
         'Teléfono': cot.cliente?.telefono ?? '',
         'Estado': cot.estado,
         'Mano de Obra ($)': cot.mano_de_obra_monto,
-        'Detalle MO': cot.mano_de_obra_detalle ?? '',
+        'Detalle MO': (() => { try { return (JSON.parse(cot.mano_de_obra_detalle ?? '[]') as { detalle: string }[]).map(i => i.detalle).join(' / '); } catch { return cot.mano_de_obra_detalle ?? ''; } })(),
         'Repuestos ($)': repuestosTotal,
         'Detalle Repuestos': repuestosDetalle,
         'Retiro/Entrega ($)': cot.retiro_entrega_monto,

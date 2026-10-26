@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Eye, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -68,7 +68,16 @@ interface OTRow {
     id: number;
     numero: string;
     total: number;
+    mano_de_obra_detalle: string | null;
+    mano_de_obra_monto: number;
+    repuestos: string;
+    retiro_entrega_monto: number;
     estado: string;
+  } | null;
+  recepcion: {
+    id: number;
+    estado: string;
+    fecha_hora_ingreso: string;
   } | null;
 }
 
@@ -128,6 +137,46 @@ export default function OrdenesTrabajoPAge() {
 
   // Búsqueda por patente
   const [busqueda, setBusqueda] = useState("");
+
+  const exportarExcel = async () => {
+    const XLSX = await import('xlsx');
+    const rows = otsFiltradas.map(ot => {
+      let repuestosTotal = 0;
+      try {
+        const reps = JSON.parse(ot.cotizacion?.repuestos ?? '[]') as { cantidad: number; precio_unitario: number }[];
+        repuestosTotal = reps.reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
+      } catch { /* empty */ }
+      return {
+        'N° OT': ot.numero,
+        'Patente': ot.vehiculo?.patente ?? '',
+        'Marca': ot.vehiculo?.marca ?? '',
+        'Modelo': ot.vehiculo?.modelo ?? '',
+        'Año': ot.vehiculo?.anio ?? '',
+        'Cliente': ot.cliente?.nombre ?? '',
+        'RUT Cliente': ot.cliente?.rut ?? '',
+        'Teléfono': ot.cliente?.telefono ?? '',
+        'Mecánico': ot.mecanico?.nombre ?? '',
+        'Estado': ot.estado,
+        'Fecha Inicio': ot.fecha_hora_inicio ? new Date(ot.fecha_hora_inicio).toLocaleDateString('es-CL') : '',
+        'Fecha Fin': ot.fecha_hora_fin ? new Date(ot.fecha_hora_fin).toLocaleDateString('es-CL') : '',
+        'Diagnóstico': ot.diagnostico ?? '',
+        'N° Cotización': ot.cotizacion?.numero ?? '',
+        'Estado Cotización': ot.cotizacion?.estado ?? '',
+        'Mano de Obra ($)': ot.cotizacion?.mano_de_obra_monto ?? 0,
+        'Detalle MO': ot.cotizacion?.mano_de_obra_detalle ?? '',
+        'Repuestos ($)': repuestosTotal,
+        'Retiro/Entrega ($)': ot.cotizacion?.retiro_entrega_monto ?? 0,
+        'Total Cotización ($)': ot.cotizacion?.total ?? 0,
+        'Fecha Recepción': ot.recepcion?.fecha_hora_ingreso ? new Date(ot.recepcion.fecha_hora_ingreso).toLocaleDateString('es-CL') : '',
+        'Estado Recepción': ot.recepcion?.estado ?? '',
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [10,12,12,14,6,24,14,14,18,16,14,14,30,14,14,16,30,16,16,16,16,14].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'OTs');
+    XLSX.writeFile(wb, 'ordenes_trabajo.xlsx');
+  };
 
   const otsFiltradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase().replace(/[\s-]/g, '');
@@ -294,6 +343,15 @@ export default function OrdenesTrabajoPAge() {
               className="pl-8 pr-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-300 w-64"
             />
           </div>
+          {ots.length > 0 && (
+            <button
+              onClick={exportarExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Excel
+            </button>
+          )}
           <Button onClick={() => setNuevaOTOpen(true)} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Nueva OT

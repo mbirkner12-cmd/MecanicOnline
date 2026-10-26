@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Car, Pencil } from "lucide-react";
+import { Car, Pencil, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -131,6 +131,28 @@ export default function VehiculosPage() {
     );
   });
 
+  const exportarExcel = async () => {
+    const XLSX = await import('xlsx');
+    const rows = filtrados.map(v => ({
+      'Patente': v.patente,
+      'Marca': v.marca,
+      'Modelo': v.modelo,
+      'Año': v.anio,
+      'VIN': v.vin ?? '',
+      'Kilometraje (km)': v.kilometraje_actual,
+      'Cliente': v.cliente_nombre ?? '',
+      'RUT Cliente': v.cliente_rut ?? '',
+      'Teléfono': v.cliente_telefono ?? '',
+      'N° Visitas': v.num_visitas,
+      'Última Visita': formatFecha(v.ultima_visita),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [12,12,14,6,18,16,24,14,14,10,14].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Vehículos');
+    XLSX.writeFile(wb, 'vehiculos.xlsx');
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -138,9 +160,20 @@ export default function VehiculosPage() {
           <h1 className="text-2xl font-bold text-zinc-900">Vehículos</h1>
           <p className="text-zinc-500 mt-1 text-sm">Vehículos registrados en el sistema</p>
         </div>
-        <div className="flex items-center gap-2 bg-zinc-100 rounded-md px-3 py-1.5">
-          <Car className="h-4 w-4 text-zinc-500" />
-          <span className="text-sm font-medium text-zinc-700">{vehiculos.length} vehículos</span>
+        <div className="flex items-center gap-2">
+          {vehiculos.length > 0 && (
+            <button
+              onClick={exportarExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Excel
+            </button>
+          )}
+          <div className="flex items-center gap-2 bg-zinc-100 rounded-md px-3 py-1.5">
+            <Car className="h-4 w-4 text-zinc-500" />
+            <span className="text-sm font-medium text-zinc-700">{vehiculos.length} vehículos</span>
+          </div>
         </div>
       </div>
 

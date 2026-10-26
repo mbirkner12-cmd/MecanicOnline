@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Eye, FileText, Wrench } from "lucide-react";
+import { Plus, Eye, FileText, Wrench, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -101,6 +101,45 @@ export default function CotizacionesPage() {
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
+  const exportarExcel = async () => {
+    const XLSX = await import('xlsx');
+    const rows = cotizaciones.map(cot => {
+      let repuestosTotal = 0;
+      let repuestosDetalle = '';
+      try {
+        const reps = JSON.parse(cot.repuestos ?? '[]') as { descripcion: string; cantidad: number; precio_unitario: number }[];
+        repuestosTotal = reps.reduce((s, r) => s + r.cantidad * r.precio_unitario, 0);
+        repuestosDetalle = reps.map(r => `${r.descripcion} x${r.cantidad}`).join('; ');
+      } catch { /* empty */ }
+      const totalConIva = Math.round(cot.total * 1.19);
+      return {
+        'N° Cotización': cot.numero,
+        'Patente': cot.vehiculo?.patente ?? '',
+        'Marca': cot.vehiculo?.marca ?? '',
+        'Modelo': cot.vehiculo?.modelo ?? '',
+        'Año': cot.vehiculo?.anio ?? '',
+        'Cliente': cot.cliente?.nombre ?? '',
+        'RUT Cliente': cot.cliente?.rut ?? '',
+        'Teléfono': cot.cliente?.telefono ?? '',
+        'Estado': cot.estado,
+        'Mano de Obra ($)': cot.mano_de_obra_monto,
+        'Detalle MO': cot.mano_de_obra_detalle ?? '',
+        'Repuestos ($)': repuestosTotal,
+        'Detalle Repuestos': repuestosDetalle,
+        'Retiro/Entrega ($)': cot.retiro_entrega_monto,
+        'Subtotal ($)': cot.total,
+        'Total c/IVA ($)': totalConIva,
+        'N° OT Asociada': cot.ot_numero ?? '',
+        'Fecha': new Date(cot.created_at).toLocaleDateString('es-CL'),
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [14,12,12,14,6,24,14,14,14,16,30,16,40,16,16,16,14,12].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Cotizaciones');
+    XLSX.writeFile(wb, 'cotizaciones.xlsx');
+  };
+
   const fetchCotizaciones = useCallback(async () => {
     setLoading(true);
     setErrorMsg("");
@@ -176,10 +215,21 @@ export default function CotizacionesPage() {
           <h1 className="text-2xl font-bold text-zinc-900">Cotizaciones</h1>
           <p className="text-zinc-500 mt-1 text-sm">Gestión de cotizaciones del taller</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Nueva cotización
-        </Button>
+        <div className="flex items-center gap-2">
+          {cotizaciones.length > 0 && (
+            <button
+              onClick={exportarExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Excel
+            </button>
+          )}
+          <Button onClick={() => setDialogOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Nueva cotización
+          </Button>
+        </div>
       </div>
 
       {/* Error */}

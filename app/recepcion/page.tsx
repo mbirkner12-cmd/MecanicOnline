@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -41,6 +41,32 @@ export default function RecepcionPage() {
   useEffect(() => {
     fetchRecepciones();
   }, [fetchRecepciones]);
+
+  const exportarExcel = async () => {
+    const XLSX = await import('xlsx');
+    const rows = recepciones.map(r => ({
+      'Patente': r.vehiculo?.patente ?? '',
+      'Marca': r.vehiculo?.marca ?? '',
+      'Modelo': r.vehiculo?.modelo ?? '',
+      'Año': r.vehiculo?.anio ?? '',
+      'VIN': r.vehiculo?.vin ?? '',
+      'Cliente': r.cliente?.nombre ?? '',
+      'RUT Cliente': r.cliente?.rut ?? '',
+      'Teléfono': r.cliente?.telefono ?? '',
+      'Mecánico': r.mecanico?.nombre ?? '',
+      'Puesto': r.puesto?.nombre ?? '',
+      'Estado': r.estado,
+      'Kilometraje': r.kilometraje,
+      'Nivel Bencina': r.nivel_bencina ?? '',
+      'Motivo Ingreso': r.motivo_ingreso ?? '',
+      'Fecha Ingreso': new Date(r.fecha_hora_ingreso).toLocaleDateString('es-CL'),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [12,12,14,6,18,24,14,14,18,14,14,12,14,30,14].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Recepciones');
+    XLSX.writeFile(wb, 'recepciones.xlsx');
+  };
 
   const handleCrear = async (values: FormRecepcionValues) => {
     setSaving(true);
@@ -98,13 +124,24 @@ export default function RecepcionPage() {
             Gestión de ingresos al taller
           </p>
         </div>
-        <Button
-          onClick={() => setDialogOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva recepción
-        </Button>
+        <div className="flex items-center gap-2">
+          {recepciones.length > 0 && (
+            <button
+              onClick={exportarExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Excel
+            </button>
+          )}
+          <Button
+            onClick={() => setDialogOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva recepción
+          </Button>
+        </div>
       </div>
 
       {/* Error general */}

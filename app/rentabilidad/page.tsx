@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { DollarSign, Wrench, Package, BarChart3, Users, Download, TrendingUp, TrendingDown, Minus, ChevronRight, ChevronDown, FileText, ShoppingCart } from 'lucide-react';
+import { DollarSign, Wrench, Package, BarChart3, Users, Download, TrendingUp, TrendingDown, Minus, ChevronRight, ChevronDown, FileText, ShoppingCart, AlertTriangle } from 'lucide-react';
 import type { InsumoStats } from '@/app/api/insumos/route';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -798,15 +798,17 @@ export default function RentabilidadPage() {
                     No hay órdenes en el período seleccionado.
                   </td>
                 </tr>
-              ) : (
-                otsFiltradas.flatMap(ot => {
+              ) : (() => {
+                  const otsEEIds = new Set(otsParaEE.map(o => o.id));
+                  return otsFiltradas.flatMap(ot => {
+                  const excluida = !otsEEIds.has(ot.id);
                   const factor = ot.mecanico_id != null ? (data!.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
                   const c = calcOT(ot, data!.valorHora, data!.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
                   const rowMargenColor = c.margen > 30 ? 'text-green-600 bg-green-50' : c.margen > 10 ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50';
                   const otFacturas = facturasMap[ot.id] ?? [];
                   const isExpanded = expandedOTs.has(ot.id);
                   const rows = [
-                    <tr key={ot.id} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50">
+                    <tr key={ot.id} className={`border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50 ${excluida ? 'bg-amber-50/60' : ''}`}>
                       <td className="px-2 py-2.5 text-center">
                         {otFacturas.length > 0 ? (
                           <button
@@ -826,6 +828,12 @@ export default function RentabilidadPage() {
                         <Link href={`/ordenes-trabajo/${ot.id}`} className="font-mono font-semibold text-zinc-900 hover:text-blue-600 hover:underline text-xs">
                           {ot.numero}
                         </Link>
+                        {excluida && (
+                          <div className="flex items-center gap-1 mt-0.5" title="Sin costo de repuestos ni facturas — no incluida en el Estado de Resultados">
+                            <AlertTriangle className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                            <span className="text-[10px] text-amber-600 font-medium leading-tight">No incluida en EE</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 hidden md:table-cell">
                         <p className="text-zinc-700 text-xs">{ot.cliente_nombre ?? '—'}</p>
@@ -890,8 +898,8 @@ export default function RentabilidadPage() {
                     );
                   }
                   return rows;
-                })
-              )}
+                });
+              })()}
             </tbody>
             {otsFiltradas.length > 0 && stats && (
               <tfoot>

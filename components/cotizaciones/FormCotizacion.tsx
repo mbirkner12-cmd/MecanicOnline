@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
 import { Plus, Trash2, ClipboardList } from "lucide-react";
 import { formatRut, normalizeRut, formatPhone } from "@/lib/format";
 import { DiagnosticoDisplay } from "@/components/diagnostico/DiagnosticoDisplay";
@@ -290,6 +291,14 @@ export function FormCotizacion({
   );
 
   const [errorMsg, setErrorMsg] = useState("");
+  const [moSugerencias, setMoSugerencias] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch('/api/cotizaciones/mo-sugerencias')
+      .then(r => r.json())
+      .then((data: string[]) => setMoSugerencias(data))
+      .catch(() => { /* ignore */ });
+  }, []);
 
   // ── Derived totals ────────────────────────────────────────────────────────
   const totalManoDeObra = manoDeObraItems.reduce((acc, i) => acc + (i.monto ?? 0), 0);
@@ -825,12 +834,12 @@ export function FormCotizacion({
                 {manoDeObraItems.map((item, idx) => (
                   <tr key={idx} className="border-b border-zinc-100 last:border-b-0">
                     <td className="px-2 py-1.5">
-                      <input
-                        type="text"
+                      <AutocompleteInput
                         className={INPUT_CLS}
                         placeholder="Ej: Cambio de aceite y filtro"
                         value={item.detalle}
-                        onChange={(e) => updateManoDeObra(idx, "detalle", capitalizarPrimera(e.target.value))}
+                        onChange={(v) => updateManoDeObra(idx, "detalle", capitalizarPrimera(v))}
+                        suggestions={moSugerencias}
                         spellCheck={true}
                         autoCorrect="on"
                         autoCapitalize="sentences"

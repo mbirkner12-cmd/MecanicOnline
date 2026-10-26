@@ -31,6 +31,7 @@ export function AutocompleteInput({
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const filtered = value.trim()
     ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase().trim()))
@@ -56,26 +57,32 @@ export function AutocompleteInput({
 
   useEffect(() => {
     if (!open) return;
-    const onScroll = () => setOpen(false);
-    const onResize = () => { updatePosition(); };
+
+    // Close only when scrolling outside the dropdown list
+    const onScroll = (e: Event) => {
+      if (listRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+
+    // Close only when clicking outside both the input and the list
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (inputRef.current?.contains(target)) return;
+      if (listRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+
+    const onResize = () => updatePosition();
+
     window.addEventListener('scroll', onScroll, true);
+    document.addEventListener('mousedown', onMouseDown);
     window.addEventListener('resize', onResize);
     return () => {
       window.removeEventListener('scroll', onScroll, true);
+      document.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('resize', onResize);
     };
   }, [open, updatePosition]);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (inputRef.current && !inputRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
 
   function handleFocus() {
     updatePosition();
@@ -116,6 +123,7 @@ export function AutocompleteInput({
   const dropdown = showDropdown && typeof document !== 'undefined'
     ? createPortal(
         <ul
+          ref={listRef}
           id={listId}
           role="listbox"
           style={dropdownStyle}
@@ -126,7 +134,8 @@ export function AutocompleteInput({
               key={s}
               role="option"
               aria-selected={i === highlighted}
-              onMouseDown={e => { e.preventDefault(); handleSelect(s); }}
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => handleSelect(s)}
               onMouseEnter={() => setHighlighted(i)}
               className={`px-3 py-2 cursor-pointer truncate ${
                 i === highlighted ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'

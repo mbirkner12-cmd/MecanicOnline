@@ -325,6 +325,7 @@ export default function OrdenesTrabajoPAge() {
                 <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Marca y Modelo</TableHead>
                 <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Cliente</TableHead>
                 <TableHead className="font-semibold text-zinc-700 hidden md:table-cell">Mecánico</TableHead>
+                <TableHead className="font-semibold text-zinc-700 hidden lg:table-cell">Inicio</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Estado</TableHead>
                 <TableHead className="font-semibold text-zinc-700">Acciones</TableHead>
               </TableRow>
@@ -332,7 +333,7 @@ export default function OrdenesTrabajoPAge() {
             <TableBody>
               {otsFiltradas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-zinc-400 text-sm">
+                  <TableCell colSpan={8} className="text-center py-10 text-zinc-400 text-sm">
                     No hay órdenes que coincidan con &ldquo;{busqueda}&rdquo;.
                   </TableCell>
                 </TableRow>
@@ -356,6 +357,11 @@ export default function OrdenesTrabajoPAge() {
                     {ot.mecanico?.nombre ?? (
                       <span className="text-zinc-400 text-xs">Sin asignar</span>
                     )}
+                  </TableCell>
+                  <TableCell className="text-zinc-500 text-xs hidden lg:table-cell">
+                    {ot.fecha_hora_inicio
+                      ? new Date(ot.fecha_hora_inicio).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                      : <span className="text-zinc-300">—</span>}
                   </TableCell>
                   <TableCell>
                     <EstadoBadgeOT estado={ot.estado} sinRecepcion={ot.recepcion_id === null} />

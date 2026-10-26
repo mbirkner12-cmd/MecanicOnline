@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Users, Pencil, Car } from "lucide-react";
+import { Users, Pencil, Car, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatRut, formatPhone } from "@/lib/format";
 import {
@@ -131,6 +131,25 @@ export default function ClientesPage() {
     }
   }
 
+  const exportarExcel = async () => {
+    const XLSX = await import('xlsx');
+    const rows = filtrados.map(c => ({
+      'Nombre': c.nombre,
+      'RUT': c.rut ?? '',
+      'Teléfono': c.telefono ?? '',
+      'Correo': c.correo ?? '',
+      'Dirección': c.direccion ?? '',
+      'N° Vehículos': c.num_vehiculos,
+      'N° Visitas': c.num_visitas,
+      'Última Visita': formatFecha(c.ultima_visita),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [28,14,16,28,30,14,12,14].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+    XLSX.writeFile(wb, 'clientes.xlsx');
+  };
+
   const filtrados = clientes.filter((c) => {
     const q = busqueda.toLowerCase();
     return (
@@ -148,9 +167,20 @@ export default function ClientesPage() {
           <h1 className="text-2xl font-bold text-zinc-900">Clientes</h1>
           <p className="text-zinc-500 mt-1 text-sm">Clientes registrados en el sistema</p>
         </div>
-        <div className="flex items-center gap-2 bg-zinc-100 rounded-md px-3 py-1.5">
-          <Users className="h-4 w-4 text-zinc-500" />
-          <span className="text-sm font-medium text-zinc-700">{clientes.length} clientes</span>
+        <div className="flex items-center gap-2">
+          {clientes.length > 0 && (
+            <button
+              onClick={exportarExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Excel
+            </button>
+          )}
+          <div className="flex items-center gap-2 bg-zinc-100 rounded-md px-3 py-1.5">
+            <Users className="h-4 w-4 text-zinc-500" />
+            <span className="text-sm font-medium text-zinc-700">{clientes.length} clientes</span>
+          </div>
         </div>
       </div>
 

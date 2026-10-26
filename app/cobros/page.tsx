@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { DollarSign, CheckCircle2, Clock, Filter, FileText, AlertTriangle, Eye, X, Package, Wrench, Loader2, ClipboardList, Search } from 'lucide-react';
+import { DollarSign, CheckCircle2, Clock, Filter, FileText, AlertTriangle, Eye, X, Package, Wrench, Loader2, ClipboardList, Search, Download } from 'lucide-react';
 import { EstadoBadgeOT, type EstadoOT } from '@/components/ordenes-trabajo/EstadoBadgeOT';
 
 interface CobroRow {
@@ -347,15 +347,49 @@ export default function CobrosPage() {
       return dateB - dateA;
     });
 
+  const exportarExcel = async () => {
+    const XLSX = await import('xlsx');
+    const rows = filtrados.map(c => ({
+      'N° OT': c.numero,
+      'Cliente': c.cliente?.nombre ?? '',
+      'Teléfono': c.cliente?.telefono ?? '',
+      'Patente': c.vehiculo?.patente ?? '',
+      'Vehículo': c.vehiculo ? `${c.vehiculo.marca} ${c.vehiculo.modelo} ${c.vehiculo.anio}` : '',
+      'Estado OT': c.estado,
+      'Total c/IVA ($)': Math.round((c.cotizacion?.total ?? 0) * 1.19),
+      'Método Pago': c.metodo_pago ?? '',
+      'Tipo Documento': c.tipo_documento,
+      'Documento Creado': c.boleta_creada ? 'Sí' : 'No',
+      'Pagado': c.pagado ? 'Sí' : 'No',
+      'Fecha': formatFecha(c.fecha_hora_fin ?? c.updated_at),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [12,24,16,12,24,16,16,14,14,16,10,12].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Cobros');
+    XLSX.writeFile(wb, 'cobros.xlsx');
+  };
+
   const totalPendiente = cobros.filter(c => !c.pagado).reduce((s, c) => s + (c.cotizacion?.total ?? 0) * 1.19, 0);
   const totalCobrado = cobros.filter(c => c.pagado).reduce((s, c) => s + (c.cotizacion?.total ?? 0) * 1.19, 0);
 
   return (
     <>
       <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900">Cobros</h1>
-          <p className="text-zinc-500 text-sm mt-0.5">OTs listas para entregar y entregadas</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900">Cobros</h1>
+            <p className="text-zinc-500 text-sm mt-0.5">OTs listas para entregar y entregadas</p>
+          </div>
+          {cobros.length > 0 && (
+            <button
+              onClick={exportarExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-zinc-200 rounded-lg bg-white text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Excel
+            </button>
+          )}
         </div>
 
         {/* Resumen */}

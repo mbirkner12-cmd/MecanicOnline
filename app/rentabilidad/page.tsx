@@ -282,7 +282,18 @@ export default function RentabilidadPage() {
     return map;
   }, [data]);
 
-  // Calcular agregados
+  // OTs con al menos un costo de repuestos o una factura asignada (para Estado de Resultados)
+  const otsParaEE = useMemo(() => {
+    if (!data) return [];
+    return otsFiltradas.filter(ot => {
+      const tieneRepsCosto = (data.costoRepuestosPorOT[ot.id]?.costo ?? 0) > 0
+        || ot.costo_repuestos_override !== null;
+      const tieneFactura = (facturasMap[ot.id]?.length ?? 0) > 0;
+      return tieneRepsCosto || tieneFactura;
+    });
+  }, [data, otsFiltradas, facturasMap]);
+
+  // Calcular agregados (para cards resumen — usa todas las OTs filtradas)
   const stats = useMemo(() => {
     if (!data) return null;
     let totalIngreso = 0, totalCostoMO = 0, totalCostoReps = 0, totalGanancia = 0;
@@ -304,6 +315,29 @@ export default function RentabilidadPage() {
 
     return { totalIngreso, totalCostoMO, totalCostoReps, totalCosto, totalGanancia, margenProm, totalIngresoMO, totalIngresoReps };
   }, [data, otsFiltradas, facturasMap]);
+
+  // Calcular agregados solo para OTs con costos (para Estado de Resultados)
+  const statsEE = useMemo(() => {
+    if (!data) return null;
+    let totalIngreso = 0, totalCostoMO = 0, totalCostoReps = 0, totalGanancia = 0;
+    let totalIngresoMO = 0, totalIngresoReps = 0;
+
+    for (const ot of otsParaEE) {
+      const factor = ot.mecanico_id != null ? (data.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
+      const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
+      totalIngreso += c.ingreso;
+      totalCostoMO += c.costoMO;
+      totalCostoReps += c.costoReps;
+      totalGanancia += c.ganancia;
+      totalIngresoMO += c.ingresoMO;
+      totalIngresoReps += c.ingresoRepsCot;
+    }
+
+    const totalCosto = totalCostoMO + totalCostoReps;
+    const margenProm = totalIngreso > 0 ? (totalGanancia / totalIngreso) * 100 : 0;
+
+    return { totalIngreso, totalCostoMO, totalCostoReps, totalCosto, totalGanancia, margenProm, totalIngresoMO, totalIngresoReps };
+  }, [data, otsParaEE, facturasMap]);
 
   // Costo M.O. por mecánico
   const mecanicoCosts = useMemo(() => {
@@ -523,7 +557,8 @@ export default function RentabilidadPage() {
       )}
 
       {/* ── Estado de Resultados ─────────────────────────────────────────── */}
-      {stats && gastos.length > 0 && (() => {
+      {statsEE && gastos.length > 0 && (() => {
+        const otsSinCostos = otsFiltradas.length - otsParaEE.length;
         // Determinar rango de meses del período para filtrar puntuales
         const mesesEnRango = new Set<string>();
         if (mesFiltro) {
@@ -531,8 +566,8 @@ export default function RentabilidadPage() {
         } else {
           const hoy = new Date();
           const desde = periodo === 0
-            ? (otsFiltradas.length > 0
-              ? new Date(Math.min(...otsFiltradas.map(o => new Date(o.fecha_hora_fin ?? o.updated_at).getTime())))
+            ? (otsParaEE.length > 0
+              ? new Date(Math.min(...otsParaEE.map(o => new Date(o.fecha_hora_fin ?? o.updated_at).getTime())))
               : new Date(hoy.getFullYear(), hoy.getMonth() - 11, 1))
             : new Date(hoy.getTime() - periodo * 24 * 3600 * 1000);
           const cur = new Date(desde.getFullYear(), desde.getMonth(), 1);
@@ -546,10 +581,10 @@ export default function RentabilidadPage() {
         const totalPuntuales = gastosPuntuales.reduce((s, g) => s + g.monto_mensual, 0);
         const totalFijos = gastos.filter(g => g.tipo === 'fijo').reduce((s, g) => s + g.monto_mensual * mesesPeriodo, 0);
         const totalGav = gastos.filter(g => g.tipo === 'gav').reduce((s, g) => s + g.monto_mensual * mesesPeriodo, 0);
-        const margenBruto = stats.totalIngreso - stats.totalCosto;
+        const margenBruto = statsEE.totalIngreso - statsEE.totalCosto;
         const ebit = margenBruto - totalFijos - totalGav - totalPuntuales;
-        const margenBrutoPct = stats.totalIngreso > 0 ? (margenBruto / stats.totalIngreso) * 100 : 0;
-        const margenNetoEEPct = stats.totalIngreso > 0 ? (ebit / stats.totalIngreso) * 100 : 0;
+        const margenBrutoPct = statsEE.totalIngreso > 0 ? (margenBruto / statsEE.totalIngreso) * 100 : 0;
+        const margenNetoEEPct = statsEE.totalIngreso > 0 ? (ebit / statsEE.totalIngreso) * 100 : 0;
         const ResultIcon = ebit > 0 ? TrendingUp : ebit < 0 ? TrendingDown : Minus;
         const resultColor = ebit > 0 ? 'text-green-600' : ebit < 0 ? 'text-red-600' : 'text-zinc-500';
         const resultBg = ebit > 0 ? 'bg-green-50 border-green-200' : ebit < 0 ? 'bg-red-50 border-red-200' : 'bg-zinc-50 border-zinc-200';
@@ -568,12 +603,19 @@ export default function RentabilidadPage() {
                 <TrendingUp className="h-4 w-4 text-zinc-400" />
                 Estado de Resultados
               </h2>
-              <span className="text-xs text-zinc-400">{mesesPeriodo} {mesesPeriodo === 1 ? 'mes' : 'meses'}</span>
+              <div className="flex items-center gap-3">
+                {otsSinCostos > 0 && (
+                  <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5" title="OTs sin costo de repuestos ni facturas asignadas">
+                    {otsSinCostos} OT{otsSinCostos !== 1 ? 's' : ''} sin costos excluida{otsSinCostos !== 1 ? 's' : ''}
+                  </span>
+                )}
+                <span className="text-xs text-zinc-400">{mesesPeriodo} {mesesPeriodo === 1 ? 'mes' : 'meses'}</span>
+              </div>
             </div>
             <div className="space-y-0">
-              <Row label="Ingresos netos" value={stats.totalIngreso} bold />
-              <Row label="Costo M.O." value={stats.totalCostoMO} indent />
-              <Row label="Costo repuestos" value={stats.totalCostoReps} indent />
+              <Row label="Ingresos netos" value={statsEE.totalIngreso} bold />
+              <Row label="Costo M.O." value={statsEE.totalCostoMO} indent />
+              <Row label="Costo repuestos" value={statsEE.totalCostoReps} indent />
               <Row label="Margen bruto" value={margenBruto} bold separator color={margenBruto >= 0 ? 'text-green-700' : 'text-red-600'} />
               <div className="text-xs text-zinc-400 text-right -mt-1 pb-1">{margenBrutoPct.toFixed(1)}% del ingreso</div>
               {gastos.filter(g => g.tipo === 'fijo').map(g => (

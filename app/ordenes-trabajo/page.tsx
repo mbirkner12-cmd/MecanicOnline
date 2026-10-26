@@ -163,7 +163,7 @@ export default function OrdenesTrabajoPAge() {
         'N° Cotización': ot.cotizacion?.numero ?? '',
         'Estado Cotización': ot.cotizacion?.estado ?? '',
         'Mano de Obra ($)': ot.cotizacion?.mano_de_obra_monto ?? 0,
-        'Detalle MO': ot.cotizacion?.mano_de_obra_detalle ?? '',
+        'Detalle MO': (() => { try { return (JSON.parse(ot.cotizacion?.mano_de_obra_detalle ?? '[]') as { detalle: string }[]).map(i => i.detalle).join(' / '); } catch { return ot.cotizacion?.mano_de_obra_detalle ?? ''; } })(),
         'Repuestos ($)': repuestosTotal,
         'Retiro/Entrega ($)': ot.cotizacion?.retiro_entrega_monto ?? 0,
         'Total Cotización ($)': ot.cotizacion?.total ?? 0,

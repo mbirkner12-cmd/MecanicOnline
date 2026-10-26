@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
+import { AutocompleteInput, type AutocompleteSuggestion } from "@/components/ui/AutocompleteInput";
+import type { MOSugerencia } from "@/app/api/cotizaciones/mo-sugerencias/route";
 import { Plus, Trash2, ClipboardList } from "lucide-react";
 import { formatRut, normalizeRut, formatPhone } from "@/lib/format";
 import { DiagnosticoDisplay } from "@/components/diagnostico/DiagnosticoDisplay";
@@ -291,12 +292,14 @@ export function FormCotizacion({
   );
 
   const [errorMsg, setErrorMsg] = useState("");
-  const [moSugerencias, setMoSugerencias] = useState<string[]>([]);
+  const [moSugerencias, setMoSugerencias] = useState<AutocompleteSuggestion[]>([]);
 
   useEffect(() => {
     fetch('/api/cotizaciones/mo-sugerencias')
       .then(r => r.json())
-      .then((data: string[]) => setMoSugerencias(data))
+      .then((data: MOSugerencia[]) =>
+        setMoSugerencias(data.map(s => ({ label: s.detalle, data: s.monto })))
+      )
       .catch(() => { /* ignore */ });
   }, []);
 
@@ -425,6 +428,14 @@ export function FormCotizacion({
     setManoDeObraItems((prev) => {
       const copy = [...prev];
       copy[idx] = { ...copy[idx], [field]: field === "monto" ? Number(value) : value };
+      return copy;
+    });
+  };
+
+  const selectManoDeObraItem = (idx: number, sugerencia: AutocompleteSuggestion) => {
+    setManoDeObraItems((prev) => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], detalle: sugerencia.label, monto: Number(sugerencia.data ?? 0) };
       return copy;
     });
   };
@@ -839,6 +850,7 @@ export function FormCotizacion({
                         placeholder="Ej: Cambio de aceite y filtro"
                         value={item.detalle}
                         onChange={(v) => updateManoDeObra(idx, "detalle", capitalizarPrimera(v))}
+                        onSelect={(s) => selectManoDeObraItem(idx, s)}
                         suggestions={moSugerencias}
                         spellCheck={true}
                         autoCorrect="on"

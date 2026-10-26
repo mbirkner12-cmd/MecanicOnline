@@ -3,10 +3,18 @@
 import { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
+export interface AutocompleteSuggestion {
+  label: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data?: any;
+}
+
 interface AutocompleteInputProps {
   value: string;
   onChange: (value: string) => void;
-  suggestions: string[];
+  /** Called when the user picks an item from the list (not just types) */
+  onSelect?: (suggestion: AutocompleteSuggestion) => void;
+  suggestions: AutocompleteSuggestion[];
   placeholder?: string;
   className?: string;
   spellCheck?: boolean;
@@ -18,6 +26,7 @@ interface AutocompleteInputProps {
 export function AutocompleteInput({
   value,
   onChange,
+  onSelect,
   suggestions,
   placeholder,
   className,
@@ -34,7 +43,7 @@ export function AutocompleteInput({
   const listRef = useRef<HTMLUListElement>(null);
 
   const filtered = value.trim()
-    ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase().trim()))
+    ? suggestions.filter(s => s.label.toLowerCase().includes(value.toLowerCase().trim()))
     : suggestions;
 
   const showDropdown = open && filtered.length > 0;
@@ -58,20 +67,16 @@ export function AutocompleteInput({
   useEffect(() => {
     if (!open) return;
 
-    // Close only when scrolling outside the dropdown list
     const onScroll = (e: Event) => {
       if (listRef.current?.contains(e.target as Node)) return;
       setOpen(false);
     };
-
-    // Close only when clicking outside both the input and the list
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as Node;
       if (inputRef.current?.contains(target)) return;
       if (listRef.current?.contains(target)) return;
       setOpen(false);
     };
-
     const onResize = () => updatePosition();
 
     window.addEventListener('scroll', onScroll, true);
@@ -106,16 +111,16 @@ export function AutocompleteInput({
       setHighlighted(h => Math.max(h - 1, 0));
       e.preventDefault();
     } else if (e.key === 'Enter' && highlighted >= 0) {
-      onChange(filtered[highlighted]);
-      setOpen(false);
+      handleSelect(filtered[highlighted]);
       e.preventDefault();
     } else if (e.key === 'Escape') {
       setOpen(false);
     }
   }
 
-  function handleSelect(s: string) {
-    onChange(s);
+  function handleSelect(s: AutocompleteSuggestion) {
+    onChange(s.label);
+    onSelect?.(s);
     setOpen(false);
     inputRef.current?.focus();
   }
@@ -131,7 +136,7 @@ export function AutocompleteInput({
         >
           {filtered.map((s, i) => (
             <li
-              key={s}
+              key={s.label}
               role="option"
               aria-selected={i === highlighted}
               onMouseDown={e => e.preventDefault()}
@@ -141,7 +146,7 @@ export function AutocompleteInput({
                 i === highlighted ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'
               }`}
             >
-              {s}
+              {s.label}
             </li>
           ))}
         </ul>,

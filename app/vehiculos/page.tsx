@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Car, Pencil, Download } from "lucide-react";
+import { Car, Pencil, Download, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -59,6 +59,13 @@ export default function VehiculosPage() {
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Cambio de propietario
+  const [clienteId, setClienteId] = useState<number | null>(null);
+  const [clienteSearch, setClienteSearch] = useState("");
+  const [clientesLista, setClientesLista] = useState<{ id: number; nombre: string; rut: string | null }[]>([]);
+  const [showClienteDrop, setShowClienteDrop] = useState(false);
+  const clienteRef = useRef<HTMLDivElement>(null);
+
   const fetchVehiculos = useCallback(async () => {
     setLoading(true);
     try {
@@ -86,7 +93,16 @@ export default function VehiculosPage() {
       vin: v.vin ?? "",
       kilometraje_actual: String(v.kilometraje_actual),
     });
+    setClienteId(v.cliente_id);
+    setClienteSearch(v.cliente_nombre ?? "");
+    setShowClienteDrop(false);
     setErrorMsg("");
+    if (clientesLista.length === 0) {
+      fetch("/api/clientes")
+        .then(r => r.json())
+        .then((data: { id: number; nombre: string; rut: string | null }[]) => setClientesLista(data))
+        .catch(() => {/* ignore */});
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -105,6 +121,7 @@ export default function VehiculosPage() {
           anio: Number(form.anio),
           vin: form.vin || null,
           kilometraje_actual: Number(form.kilometraje_actual),
+          ...(clienteId !== null ? { cliente_id: clienteId } : {}),
         }),
       });
       if (!res.ok) {
@@ -333,6 +350,54 @@ export default function VehiculosPage() {
                 />
               </div>
             </div>
+            {/* Propietario */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-zinc-700">Propietario</label>
+              <div ref={clienteRef} className="relative">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={clienteSearch}
+                    onChange={e => { setClienteSearch(e.target.value); setClienteId(null); setShowClienteDrop(true); }}
+                    onFocus={() => setShowClienteDrop(true)}
+                    onBlur={() => setTimeout(() => setShowClienteDrop(false), 150)}
+                    placeholder="Buscar cliente por nombre o RUT..."
+                    className="w-full pl-8 pr-8 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  />
+                  {clienteSearch && (
+                    <button type="button" onClick={() => { setClienteSearch(""); setClienteId(null); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {showClienteDrop && clienteSearch.trim().length > 0 && (() => {
+                  const q = clienteSearch.toLowerCase();
+                  const matches = clientesLista.filter(c =>
+                    c.nombre.toLowerCase().includes(q) || (c.rut ?? "").toLowerCase().includes(q)
+                  ).slice(0, 8);
+                  if (matches.length === 0) return null;
+                  return (
+                    <ul className="absolute z-50 left-0 top-full mt-0.5 w-full max-h-48 overflow-y-auto bg-white border border-zinc-200 rounded-lg shadow-lg text-sm">
+                      {matches.map(c => (
+                        <li
+                          key={c.id}
+                          onMouseDown={() => { setClienteId(c.id); setClienteSearch(c.nombre); setShowClienteDrop(false); }}
+                          className="px-3 py-2 cursor-pointer hover:bg-zinc-50 flex items-center justify-between"
+                        >
+                          <span className="font-medium text-zinc-900">{c.nombre}</span>
+                          {c.rut && <span className="text-xs text-zinc-400 font-mono ml-2">{c.rut}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()}
+              </div>
+              {clienteId !== null && clienteId !== editando?.cliente_id && (
+                <p className="text-xs text-amber-600">El propietario cambiará al guardar</p>
+              )}
+            </div>
+
             {errorMsg && (
               <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{errorMsg}</p>
             )}

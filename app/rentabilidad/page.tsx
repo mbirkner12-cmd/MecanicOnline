@@ -830,31 +830,34 @@ export default function RentabilidadPage() {
                     'Facturas': (facturasMap[ot.id] ?? []).map(f => f.numero).join(', '),
                     'En EE': eeIds.has(ot.id) ? 'Sí' : 'No',
                   };
-                  // MO items
-                  let moCount = 0;
+                  const factor = ot.mecanico_id != null ? (data.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
+                  const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
+
+                  // MO — una sola fila con costo calculado y todos los ítems en Descripción
+                  let moDesc = '';
                   try {
-                    const moItems = JSON.parse(ot.cot_mo_detalle ?? '[]') as { detalle: string; monto: number }[];
-                    for (const m of moItems) {
-                      rows.push({ ...base, 'Tipo': 'Mano de Obra', 'Descripción': m.detalle, 'Cantidad': 1, 'Costo Empresa ($)': m.monto });
-                      moCount++;
-                    }
+                    const moItems = JSON.parse(ot.cot_mo_detalle ?? '[]') as { detalle: string }[];
+                    moDesc = moItems.map(m => m.detalle).join(' / ');
                   } catch { /* skip */ }
-                  // Repuesto items from inventory (company cost = precio_costo_snapshot)
+                  rows.push({ ...base, 'Tipo': 'Mano de Obra', 'Descripción': moDesc, 'Cantidad': 1, 'Costo Empresa ($)': Math.round(c.costoMO) });
+
+                  // Repuestos del inventario — costo real (precio_costo_snapshot)
                   const invReps = repsMap[ot.id] ?? [];
                   for (const r of invReps) {
-                    rows.push({ ...base, 'Tipo': 'Repuesto (inventario)', 'Descripción': r.nombre, 'Cantidad': r.cantidad, 'Costo Empresa ($)': r.precio_costo_snapshot * r.cantidad });
+                    rows.push({ ...base, 'Tipo': 'Repuesto', 'Descripción': r.nombre, 'Cantidad': r.cantidad, 'Costo Empresa ($)': Math.round(r.precio_costo_snapshot * r.cantidad) });
                   }
-                  // Repuesto items from cotización (valor_unitario = precio cobrado al cliente)
+
+                  // Repuestos de la cotización con costo ingresado (costo_repuestos_cot)
                   try {
-                    const cotReps = JSON.parse(ot.cot_repuestos ?? '[]') as { detalle: string; cantidad: number; valor_unitario: number }[];
-                    for (const r of cotReps) {
-                      rows.push({ ...base, 'Tipo': 'Repuesto (cotización)', 'Descripción': r.detalle, 'Cantidad': r.cantidad, 'Costo Empresa ($)': r.valor_unitario * r.cantidad });
+                    const cotReps = JSON.parse(ot.cot_repuestos ?? '[]') as { detalle: string; cantidad: number }[];
+                    const costosCot = JSON.parse(ot.costo_repuestos_cot ?? 'null') as (number | null)[] | null ?? [];
+                    for (let i = 0; i < cotReps.length; i++) {
+                      const costo = costosCot[i] ?? 0;
+                      if (costo > 0) {
+                        rows.push({ ...base, 'Tipo': 'Repuesto', 'Descripción': cotReps[i].detalle, 'Cantidad': cotReps[i].cantidad, 'Costo Empresa ($)': Math.round(costo * cotReps[i].cantidad) });
+                      }
                     }
                   } catch { /* skip */ }
-                  // If OT has no items at all, add an empty row so it still appears
-                  if (moCount === 0 && invReps.length === 0 && (JSON.parse(ot.cot_repuestos ?? '[]') as unknown[]).length === 0) {
-                    rows.push({ ...base, 'Tipo': '', 'Descripción': '', 'Cantidad': '', 'Costo Empresa ($)': '' });
-                  }
                 }
                 exportSheet('detalle_ot', 'Detalle OTs', rows, [12, 24, 12, 20, 20, 8, 16, 36, 10, 14]);
               }} />

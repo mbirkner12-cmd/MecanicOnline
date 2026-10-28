@@ -26,6 +26,7 @@ interface OTRow {
   cliente_nombre: string | null;
   cot_total: number | null;
   cot_mo: number | null;
+  cot_mo_detalle: string | null;
   cot_retiro: number | null;
   cot_repuestos: string | null;
 }
@@ -811,24 +812,42 @@ export default function RentabilidadPage() {
           <h2 className="text-sm font-semibold text-zinc-700">Detalle por OT</h2>
           {data && otsFiltradas.length > 0 && (() => {
             const eeIds = new Set(otsParaEE.map(o => o.id));
+            // Build a repuestos map by ot_id for quick lookup
+            const repsMap: Record<number, typeof data.repuestosDetalle> = {};
+            for (const r of data.repuestosDetalle) {
+              if (!repsMap[r.ot_id]) repsMap[r.ot_id] = [];
+              repsMap[r.ot_id].push(r);
+            }
             return (
-              <BtnExcel onClick={() => exportSheet('detalle_ot', 'Detalle OTs', otsFiltradas.map(ot => {
-                const factor = ot.mecanico_id != null ? (data.mecanicoFactores[ot.mecanico_id]?.factor_boleta ?? 0) : 0;
-                const c = calcOT(ot, data.valorHora, data.costoRepuestosPorOT[ot.id], facturasMap[ot.id] ?? [], factor);
-                return {
-                  'N° OT': ot.numero,
-                  'Patente': ot.vehiculo_patente ?? '',
-                  'Cliente': ot.cliente_nombre ?? '',
-                  'Mecánico': ot.mecanico_nombre ?? '',
-                  'Ingreso': c.ingreso,
-                  'Costo MO': c.costoMO,
-                  'Costo Repuestos': c.costoReps,
-                  'Ganancia': c.ganancia,
-                  'Margen %': parseFloat(c.margen.toFixed(1)),
-                  'Facturas': (facturasMap[ot.id] ?? []).map(f => f.numero).join(', '),
-                  'En EE': eeIds.has(ot.id) ? 'Sí' : 'No',
-                };
-              }), [12, 10, 22, 18, 14, 14, 16, 14, 10, 20, 8])} />
+              <BtnExcel onClick={() => {
+                const rows: Record<string, unknown>[] = [];
+                for (const ot of otsFiltradas) {
+                  const base = {
+                    'N° OT': ot.numero,
+                    'Cliente': ot.cliente_nombre ?? '',
+                    'Patente': ot.vehiculo_patente ?? '',
+                    'Mecánico': ot.mecanico_nombre ?? '',
+                    'Facturas': (facturasMap[ot.id] ?? []).map(f => f.numero).join(', '),
+                    'En EE': eeIds.has(ot.id) ? 'Sí' : 'No',
+                  };
+                  // MO items
+                  try {
+                    const moItems = JSON.parse(ot.cot_mo_detalle ?? '[]') as { detalle: string; monto: number }[];
+                    for (const m of moItems) {
+                      rows.push({ ...base, 'Tipo': 'Mano de Obra', 'Descripción': m.detalle, 'Cantidad': 1, 'Costo ($)': m.monto });
+                    }
+                  } catch { /* skip */ }
+                  // Repuesto items (inventory cost)
+                  for (const r of repsMap[ot.id] ?? []) {
+                    rows.push({ ...base, 'Tipo': 'Repuesto', 'Descripción': r.nombre, 'Cantidad': r.cantidad, 'Costo ($)': r.precio_costo_snapshot * r.cantidad });
+                  }
+                  // If OT has no items at all, add a summary row
+                  if ((JSON.parse(ot.cot_mo_detalle ?? '[]') as unknown[]).length === 0 && (repsMap[ot.id] ?? []).length === 0) {
+                    rows.push({ ...base, 'Tipo': '', 'Descripción': '', 'Cantidad': '', 'Costo ($)': '' });
+                  }
+                }
+                exportSheet('detalle_ot', 'Detalle OTs', rows, [12, 24, 12, 20, 20, 8, 16, 36, 10, 14]);
+              }} />
             );
           })()}
         </div>

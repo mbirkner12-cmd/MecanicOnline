@@ -31,6 +31,7 @@ export async function GET() {
         mecanico_nombre: mecanicos.nombre,
         cot_total: cotizaciones.total,
         cot_mo: cotizaciones.mano_de_obra_monto,
+        cot_mo_detalle: cotizaciones.mano_de_obra_detalle,
         cot_retiro: cotizaciones.retiro_entrega_monto,
         cot_repuestos: cotizaciones.repuestos,
       })

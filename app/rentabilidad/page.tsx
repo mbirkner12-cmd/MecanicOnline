@@ -831,19 +831,29 @@ export default function RentabilidadPage() {
                     'En EE': eeIds.has(ot.id) ? 'Sí' : 'No',
                   };
                   // MO items
+                  let moCount = 0;
                   try {
                     const moItems = JSON.parse(ot.cot_mo_detalle ?? '[]') as { detalle: string; monto: number }[];
                     for (const m of moItems) {
-                      rows.push({ ...base, 'Tipo': 'Mano de Obra', 'Descripción': m.detalle, 'Cantidad': 1, 'Costo ($)': m.monto });
+                      rows.push({ ...base, 'Tipo': 'Mano de Obra', 'Descripción': m.detalle, 'Cantidad': 1, 'Costo Empresa ($)': m.monto });
+                      moCount++;
                     }
                   } catch { /* skip */ }
-                  // Repuesto items (inventory cost)
-                  for (const r of repsMap[ot.id] ?? []) {
-                    rows.push({ ...base, 'Tipo': 'Repuesto', 'Descripción': r.nombre, 'Cantidad': r.cantidad, 'Costo ($)': r.precio_costo_snapshot * r.cantidad });
+                  // Repuesto items from inventory (company cost = precio_costo_snapshot)
+                  const invReps = repsMap[ot.id] ?? [];
+                  for (const r of invReps) {
+                    rows.push({ ...base, 'Tipo': 'Repuesto (inventario)', 'Descripción': r.nombre, 'Cantidad': r.cantidad, 'Costo Empresa ($)': r.precio_costo_snapshot * r.cantidad });
                   }
-                  // If OT has no items at all, add a summary row
-                  if ((JSON.parse(ot.cot_mo_detalle ?? '[]') as unknown[]).length === 0 && (repsMap[ot.id] ?? []).length === 0) {
-                    rows.push({ ...base, 'Tipo': '', 'Descripción': '', 'Cantidad': '', 'Costo ($)': '' });
+                  // Repuesto items from cotización (valor_unitario = precio cobrado al cliente)
+                  try {
+                    const cotReps = JSON.parse(ot.cot_repuestos ?? '[]') as { detalle: string; cantidad: number; valor_unitario: number }[];
+                    for (const r of cotReps) {
+                      rows.push({ ...base, 'Tipo': 'Repuesto (cotización)', 'Descripción': r.detalle, 'Cantidad': r.cantidad, 'Costo Empresa ($)': r.valor_unitario * r.cantidad });
+                    }
+                  } catch { /* skip */ }
+                  // If OT has no items at all, add an empty row so it still appears
+                  if (moCount === 0 && invReps.length === 0 && (JSON.parse(ot.cot_repuestos ?? '[]') as unknown[]).length === 0) {
+                    rows.push({ ...base, 'Tipo': '', 'Descripción': '', 'Cantidad': '', 'Costo Empresa ($)': '' });
                   }
                 }
                 exportSheet('detalle_ot', 'Detalle OTs', rows, [12, 24, 12, 20, 20, 8, 16, 36, 10, 14]);
